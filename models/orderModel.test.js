@@ -16,7 +16,7 @@ describe("Order Model", () => {
     });
 
     describe("Schema Validation", () => {
-        test("should create order with valid data", async () => {
+        test("should create order with valid data (Products Array BV: 1)", async () => {
             // Arrange
             const orderData = {
                 products: [new mongoose.Types.ObjectId()],
@@ -33,7 +33,7 @@ describe("Order Model", () => {
             expect(order.status).toBe("Processing");
         });
 
-        test("should allow multiple products", async () => {
+        test("should allow multiple products (Products Array BV: 2)", async () => {
             // Arrange
             const products = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
 
@@ -45,6 +45,19 @@ describe("Order Model", () => {
 
             // Assert
             expect(order.products).toHaveLength(2);
+        });
+
+        test("should allow empty products array (Products Array BV: 0)", async () => {
+            // Arrange
+            const orderData = {
+                buyer: new mongoose.Types.ObjectId(),
+            };
+
+            // Act
+            const order = await Order.create(orderData);
+
+            // Assert
+            expect(order.products).toEqual([]);
         });
 
         test("should store payment as object", async () => {
