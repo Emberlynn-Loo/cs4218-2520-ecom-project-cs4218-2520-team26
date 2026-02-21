@@ -5,7 +5,10 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import '@testing-library/jest-dom/extend-expect';
 import toast from 'react-hot-toast';
 import Register from './Register';
-import { PassThrough } from 'stream';
+
+/**
+ * Created by: Nicholas Koh Zi Lun (A0272806B)
+ */
 
 // Mocks
 jest.mock('axios');
