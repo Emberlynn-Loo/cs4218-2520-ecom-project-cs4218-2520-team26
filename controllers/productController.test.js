@@ -78,7 +78,7 @@ import {
   realtedProductController,
   productCategoryController,
   braintreeTokenController,
-  brainTreePaymentController,
+  brainTreePaymentController
 } from "./productController.js";
 
 const makeRes = () => {
@@ -1031,5 +1031,229 @@ describe("braintreeTokenController", () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.send).toHaveBeenCalledWith(err);
+  });
+});
+// Earnest Suprapmo, A0251966U
+// Mocks for Braintree gateway behavior
+const mockClientTokenGenerate = jest.fn();
+const mockTransactionSale = jest.fn();
+
+jest.mock("braintree", () => ({
+  __esModule: true,
+  default: {
+    Environment: {
+      Sandbox: "Sandbox",
+    },
+    BraintreeGateway: function () {
+      return {
+        clientToken: {
+          generate: (options, callback) =>
+            mockClientTokenGenerate(options, callback),
+        },
+        transaction: {
+          sale: (params, callback) =>
+            mockTransactionSale(params, callback),
+        },
+      };
+    },
+  },
+}));
+
+// Mocks for Order model used in brainTreePaymentController
+const mockOrderSave = jest.fn();
+const mockOrderModel = jest.fn(() => ({
+  save: mockOrderSave,
+}));
+
+jest.mock("../models/orderModel.js", () => ({
+  __esModule: true,
+  default: function (...args) {
+    return mockOrderModel(...args);
+  },
+}));
+
+const createMockResponse = () => {
+  const res = {
+    status: jest.fn(),
+    send: jest.fn(),
+    json: jest.fn(),
+  };
+  res.status.mockReturnValue(res);
+  return res;
+};
+
+describe("Braintree controllers", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("braintreeTokenController", () => {
+    it("sends generated client token on success", async () => {
+      // Arrange
+      const tokenResponse = { clientToken: "test-token" };
+      mockClientTokenGenerate.mockImplementation((options, callback) => {
+        callback(null, tokenResponse);
+      });
+      const req = {};
+      const res = createMockResponse();
+
+      // Act
+      await braintreeTokenController(req, res);
+
+      // Assert
+      expect(mockClientTokenGenerate).toHaveBeenCalledWith(
+        {},
+        expect.any(Function)
+      );
+      expect(res.send).toHaveBeenCalledWith(tokenResponse);
+      expect(res.status).not.toHaveBeenCalled();
+    });
+
+    it("returns 500 when client token generation fails", async () => {
+      // Arrange
+      const error = new Error("token error");
+      mockClientTokenGenerate.mockImplementation((options, callback) => {
+        callback(error, null);
+      });
+      const req = {};
+      const res = createMockResponse();
+
+      // Act
+      await braintreeTokenController(req, res);
+
+      // Assert
+      expect(mockClientTokenGenerate).toHaveBeenCalledWith(
+        {},
+        expect.any(Function)
+      );
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.send).toHaveBeenCalledWith(error);
+    });
+
+    it("logs an error when clientToken.generate throws synchronously", async () => {
+      // Arrange
+      const error = new Error("sync token error");
+      mockClientTokenGenerate.mockImplementation(() => {
+        throw error;
+      });
+      const req = {};
+      const res = createMockResponse();
+      const consoleSpy = jest
+        .spyOn(console, "log")
+        .mockImplementation(() => {});
+
+      // Act
+      await braintreeTokenController(req, res);
+
+      // Assert
+      expect(mockClientTokenGenerate).toHaveBeenCalledWith(
+        {},
+        expect.any(Function)
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(error);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.send).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("brainTreePaymentController", () => {
+    it("creates an order and responds ok when transaction succeeds", async () => {
+      // Arrange
+      const cart = [
+        { _id: "p1", price: 10 },
+        { _id: "p2", price: 20 },
+      ];
+      const nonce = "fake-nonce";
+      const req = {
+        body: { nonce, cart },
+        user: { _id: "user-1" },
+      };
+      const res = createMockResponse();
+      const transactionResult = { id: "txn-123" };
+
+      mockTransactionSale.mockImplementation((params, callback) => {
+        callback(null, transactionResult);
+      });
+
+      // Act
+      await brainTreePaymentController(req, res);
+
+      // Assert
+      expect(mockTransactionSale).toHaveBeenCalledTimes(1);
+      const [saleParams] = mockTransactionSale.mock.calls[0];
+      expect(saleParams).toMatchObject({
+        amount: 30,
+        paymentMethodNonce: nonce,
+        options: { submitForSettlement: true },
+      });
+
+      expect(mockOrderModel).toHaveBeenCalledWith({
+        products: cart,
+        payment: transactionResult,
+        buyer: "user-1",
+      });
+      expect(mockOrderSave).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ ok: true });
+      expect(res.status).not.toHaveBeenCalledWith(500);
+    });
+
+    it("returns 500 when transaction fails", async () => {
+      // Arrange
+      const cart = [{ _id: "p1", price: 10 }];
+      const nonce = "bad-nonce";
+      const req = {
+        body: { nonce, cart },
+        user: { _id: "user-1" },
+      };
+      const res = createMockResponse();
+      const error = new Error("transaction error");
+
+      mockTransactionSale.mockImplementation((params, callback) => {
+        callback(error, null);
+      });
+
+      // Act
+      await brainTreePaymentController(req, res);
+
+      // Assert
+      expect(mockTransactionSale).toHaveBeenCalledTimes(1);
+      expect(mockOrderModel).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.send).toHaveBeenCalledWith(error);
+    });
+
+    it("logs an error when transaction.sale throws synchronously", async () => {
+      // Arrange
+      const cart = [{ _id: "p1", price: 10 }];
+      const nonce = "sync-error-nonce";
+      const req = {
+        body: { nonce, cart },
+        user: { _id: "user-1" },
+      };
+      const res = createMockResponse();
+      const error = new Error("sync transaction error");
+
+      mockTransactionSale.mockImplementation(() => {
+        throw error;
+      });
+
+      const consoleSpy = jest
+        .spyOn(console, "log")
+        .mockImplementation(() => {});
+
+      // Act
+      await brainTreePaymentController(req, res);
+
+      // Assert
+      expect(mockTransactionSale).toHaveBeenCalledTimes(1);
+      expect(consoleSpy).toHaveBeenCalledWith(error);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.send).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
   });
 });
