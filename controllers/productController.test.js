@@ -1016,7 +1016,7 @@ describe("productCategoryController", () => {
 });
 
   
-  // Earnest Suprapmo, A0251966U
+// Earnest Suprapmo, A0251966U
 describe("braintreeTokenController", () => {
   it("should send client token on success", async () => {
     // Arrange
@@ -1087,6 +1087,7 @@ jest.mock("../models/orderModel.js", () => ({
   },
 }));
 
+// Earnest Suprapmo, A0251966U
 describe("brainTreePaymentController", () => {
   beforeEach(() => {
     jest.clearAllMocks();
