@@ -15,8 +15,8 @@ describe("SearchContext", () => {
             });
 
             // Assert
-            const [auth] = result.current;
-            expect(auth.keyword).toBe("");
+            const [search] = result.current;
+            expect(search.keyword).toBe("");
         });
 
         it("should initialize with empty results array", () => {
@@ -29,8 +29,8 @@ describe("SearchContext", () => {
             });
 
             // Assert
-            const [auth] = result.current;
-            expect(auth.results).toEqual([]);
+            const [search] = result.current;
+            expect(search.results).toEqual([]);
         });
     });
 });
