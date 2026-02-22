@@ -54,6 +54,10 @@ describe("Contact page", () => {
 
     expect(screen.getByText(/1800-0000-0000/i)).toBeInTheDocument();
     expect(screen.getByText(/\(toll free\)/i)).toBeInTheDocument();
+
+    expect(screen.getByTestId("icon-mail")).toBeInTheDocument();
+    expect(screen.getByTestId("icon-phone")).toBeInTheDocument();
+    expect(screen.getByTestId("icon-support")).toBeInTheDocument();
   });
 
   it("should render contact image with correct src and alt text", () => {

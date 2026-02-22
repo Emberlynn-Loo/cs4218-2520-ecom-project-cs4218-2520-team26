@@ -60,7 +60,7 @@ describe("Product model schema validation", () => {
   });
 
   it("should fail when shipping is not boolean", async () => {
-    const p = new Product({ ...validDoc(), shipping : {nope:true}});
+    const p = new Product({ ...validDoc(), shipping: {nope:true}});
     const err = p.validateSync();
     expect(err.errors.shipping).toBeDefined();
   });
