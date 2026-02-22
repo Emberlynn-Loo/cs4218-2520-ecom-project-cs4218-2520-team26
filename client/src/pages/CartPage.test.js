@@ -270,11 +270,11 @@ describe("CartPage", () => {
 
     render(<CartPage />);
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /make payment/i })
-      ).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      const btn = screen.getByRole("button", { name: /make payment/i });
+      expect(btn).toBeInTheDocument();
+      expect(btn).not.toBeDisabled();
+    });
 
     const makePaymentButton = screen.getByRole("button", {
       name: /make payment/i,
@@ -327,12 +327,14 @@ describe("CartPage", () => {
     });
 
     // Assert
-    expect(axios.post).toHaveBeenCalledWith(
-      "/api/v1/product/braintree/payment",
-      {
-        nonce: "test-nonce",
-        cart,
-      }
+    await waitFor(() =>
+      expect(axios.post).toHaveBeenCalledWith(
+        "/api/v1/product/braintree/payment",
+        {
+          nonce: "test-nonce",
+          cart,
+        }
+      )
     );
     expect(consoleSpy).toHaveBeenCalled();
     expect(makePaymentButton).toHaveTextContent("Make Payment");

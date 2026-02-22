@@ -35,9 +35,7 @@ const CartPage = () => {
   //delete item
   const removeCartItem = (pid) => {
     try {
-      let myCart = [...cart];
-      let index = myCart.findIndex((item) => item._id === pid);
-      myCart.splice(index, 1);
+      const myCart = cart.filter((item) => item._id !== pid);
       setCart(myCart);
       localStorage.setItem("cart", JSON.stringify(myCart));
     } catch (error) {

@@ -47,6 +47,35 @@ describe("CartContext / CartProvider", () => {
     jest.clearAllMocks();
   });
 
+  it("clears invalid cart data from localStorage and falls back to empty cart", () => {
+    // Arrange
+    const error = new Error("invalid json");
+    const consoleSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    localStorageMock.getItem.mockImplementationOnce(() => {
+      throw error;
+    });
+
+    // Act
+    render(
+      <CartProvider>
+        <CartConsumerTestComponent />
+      </CartProvider>
+    );
+
+    // Assert
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Failed to parse cart from localStorage:",
+      error
+    );
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith("cart");
+    expect(screen.getByTestId("cart-length").textContent).toBe("0");
+    expect(screen.getByTestId("cart-json").textContent).toBe("[]");
+
+    consoleSpy.mockRestore();
+  });
+
   it("initializes with an empty cart when localStorage has no cart data", () => {
     // Arrange
     localStorageMock.getItem.mockReturnValueOnce(null);
