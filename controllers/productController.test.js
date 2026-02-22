@@ -281,6 +281,7 @@ describe("createProductController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("getProductController", () => {
   it("should return products (with chained query)", async () => {
     const mockProducts = [
@@ -331,6 +332,7 @@ describe("getProductController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("getSingleProductController", () => {
   it("should return a single product by slug", async () => {
     const mockProduct = { _id: "p1", slug: "razer-viper-v3-pro", name: "Razer" };
@@ -377,6 +379,7 @@ describe("getSingleProductController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("productPhotoController", () => {
   it("should set a Content-type and returns photo data when present", async () => {
     const photoBuf = Buffer.from("img");
@@ -666,6 +669,7 @@ describe("updateProductController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("productFiltersController", () => {
   it("should filter by category and price", async () => {
     const req = { body: { checked: ["electronics", "gadgets"], radio: [100, 300] } };
@@ -744,6 +748,7 @@ describe("productFiltersController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("productCountController", () => {
   it("should return count on success", async () => {
     const req = {};
@@ -780,6 +785,7 @@ describe("productCountController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("productListController", () => {
   // skip ==6
   it("should return page 2 of products", async () => {
@@ -861,6 +867,7 @@ describe("productListController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("searchProductController", () => {
   it("should return search results on success", async () => {
     const req = { params: { keyword: "razer" } };
@@ -903,6 +910,7 @@ describe("searchProductController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("relatedProductController", () => {
   it("should return related products", async () => {
     const req = { params: { pid: "p1", cid: "c1" } };
@@ -960,6 +968,7 @@ describe("relatedProductController", () => {
   });
 });
 
+// Khoo Jing Xiang, A0252605L
 describe("productCategoryController", () => {
   it("should return products by category", async () => {
     const req = { params: { slug: "mouse" } };
@@ -1003,8 +1012,8 @@ describe("productCategoryController", () => {
       error: err,
       message: "Error while Getting Products by Category",
     });
-    });
   });
+});
 
   
   // Earnest Suprapmo, A0251966U
