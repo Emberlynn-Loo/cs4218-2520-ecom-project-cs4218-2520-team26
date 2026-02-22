@@ -101,7 +101,7 @@ describe("authController - Profile and Orders", () => {
 
                 // Assert
                 expect(res.json).toHaveBeenCalledWith(
-                    { error: "Passsword is required to be at least 6 characters long" }
+                    { error: "Password is required to be at least 6 characters long" }
                 );
             });
 
