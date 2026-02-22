@@ -5,21 +5,22 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import CreateProduct from "./CreateProduct";
 
-// Emberlynn Loo, A0255614E
+//Emberlynn Loo, A0255614E
 
 jest.mock("axios");
+
 jest.mock("react-hot-toast");
-jest.mock("react-router-dom", () => ({
-    useNavigate: jest.fn(),
-}));
+
 jest.mock("./../../components/Layout", () => ({
     __esModule: true,
     default: ({ children }) => <div>{children}</div>,
 }));
+
 jest.mock("./../../components/AdminMenu", () => ({
     __esModule: true,
     default: () => <div>AdminMenu</div>,
 }));
+
 jest.mock("antd", () => {
     const Select = ({ children, onChange, placeholder }) => (
         <select
@@ -37,10 +38,13 @@ jest.mock("antd", () => {
 });
 
 const mockNavigate = jest.fn();
+jest.mock("react-router-dom", () => ({
+    useNavigate: () => mockNavigate,
+}));
 
 const mockCategories = [
-    { _id: "c1", name: "Electronics" },
-    { _id: "c2", name: "Books" },
+    { _id: "c1", name: "Cat 1" },
+    { _id: "c2", name: "Cat 2" },
 ];
 
 global.URL.createObjectURL = jest.fn(() => "fake-url");
@@ -48,14 +52,16 @@ global.URL.createObjectURL = jest.fn(() => "fake-url");
 describe("CreateProduct", () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        useNavigate.mockReturnValue(mockNavigate);
         axios.get.mockResolvedValue({
             data: { success: true, category: mockCategories },
         });
     });
 
-    test("renders page with all form fields", async () => {
+    it("renders page with all form fields", async () => {
+        //Arrange + Act
         render(<CreateProduct />);
+
+        //Assert
         expect(screen.getByText("Create Product")).toBeInTheDocument();
         expect(screen.getByPlaceholderText("write a name")).toBeInTheDocument();
         expect(screen.getByPlaceholderText("write a description")).toBeInTheDocument();
@@ -64,19 +70,28 @@ describe("CreateProduct", () => {
         expect(screen.getByText("CREATE PRODUCT")).toBeInTheDocument();
     });
 
-    test("loads categories on mount", async () => {
+    it("loads categories on initial load", async () => {
+        //Arrange + Act
         render(<CreateProduct />);
+
+        //Assert
         await waitFor(() => {
             expect(axios.get).toHaveBeenCalledWith("/api/v1/category/get-category");
         });
+
         await waitFor(() => {
-            expect(screen.getByText("Electronics")).toBeInTheDocument();
+            expect(screen.getByText("Cat 1")).toBeInTheDocument();
         });
     });
 
-    test("shows error toast when category fetch fails", async () => {
+    it("shows error toast when category fetch fails", async () => {
+        //Arrange
         axios.get.mockRejectedValueOnce(new Error("Network error"));
+
+        //Act
         render(<CreateProduct />);
+
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith(
                 "Something went wrong in getting category"
@@ -84,59 +99,92 @@ describe("CreateProduct", () => {
         });
     });
 
-    test("does not set categories when success is false", async () => {
+    it("does not set categories when success is false", async () => {
+        //Arrange
         axios.get.mockResolvedValueOnce({ data: { success: false } });
+
+        //Act
         render(<CreateProduct />);
+
         await waitFor(() => expect(axios.get).toHaveBeenCalled());
-        expect(screen.queryByText("Electronics")).not.toBeInTheDocument();
+
+        //Assert
+        expect(screen.queryByText("Cat 1")).not.toBeInTheDocument();
     });
 
-    test("updates name input when typed", () => {
+    it("updates name input when typed", () => {
+        //Arrange
         render(<CreateProduct />);
+
+        //Act
         fireEvent.change(screen.getByPlaceholderText("write a name"), {
-            target: { value: "Test Product" },
+            target: { value: "Sample Product" },
         });
-        expect(screen.getByDisplayValue("Test Product")).toBeInTheDocument();
+
+        //Assert
+        expect(screen.getByDisplayValue("Sample Product")).toBeInTheDocument();
     });
 
-    test("updates description when typed", () => {
+    it("updates description when typed", () => {
+        //Arrange
         render(<CreateProduct />);
+
+        //Act
         fireEvent.change(screen.getByPlaceholderText("write a description"), {
-            target: { value: "A great product" },
+            target: { value: "Test Description" },
         });
-        expect(screen.getByDisplayValue("A great product")).toBeInTheDocument();
+
+        //Assert
+        expect(screen.getByDisplayValue("Test Description")).toBeInTheDocument();
     });
 
-    test("updates price when typed", () => {
+    it("updates price when typed", () => {
+        //Arrange
         render(<CreateProduct />);
+
+        //Act
         fireEvent.change(screen.getByPlaceholderText("write a Price"), {
-            target: { value: "99" },
+            target: { value: "69" },
         });
-        expect(screen.getByDisplayValue("99")).toBeInTheDocument();
+
+        //Assert
+        expect(screen.getByDisplayValue("69")).toBeInTheDocument();
     });
 
-    test("updates quantity when typed", () => {
+    it("updates quantity when typed", () => {
+        //Arrange
         render(<CreateProduct />);
+
+        //Act
         fireEvent.change(screen.getByPlaceholderText("write a quantity"), {
             target: { value: "10" },
         });
+
+        //Assert
         expect(screen.getByDisplayValue("10")).toBeInTheDocument();
     });
 
-    test("shows Upload Photo label initially", () => {
+    it("shows Upload Photo label initially", () => {
+        //Arrange + Act
         render(<CreateProduct />);
+
+        //Assert
         expect(screen.getByText("Upload Photo")).toBeInTheDocument();
     });
 
-    test("creates product successfully and navigates", async () => {
+    it("creates product successfully and navigates", async () => {
+        //Arrange
         axios.post.mockResolvedValueOnce({ data: { success: true } });
         render(<CreateProduct />);
 
         fireEvent.change(screen.getByPlaceholderText("write a name"), {
             target: { value: "Test Product" },
         });
+
+        //Act
         fireEvent.click(screen.getByText("CREATE PRODUCT"));
 
+        //Assert
         await waitFor(() => {
             expect(axios.post).toHaveBeenCalled();
             expect(toast.success).toHaveBeenCalledWith("Product Created Successfully");
@@ -144,62 +192,74 @@ describe("CreateProduct", () => {
         });
     });
 
-    test("shows error toast when product creation returns success false", async () => {
-        axios.post.mockResolvedValueOnce({
-            data: { success: false, message: "Creation failed" },
-        });
+    it("shows error toast when creating product returns false success", async () => {
+        //Arrange
+        axios.post.mockResolvedValueOnce({ data: { success: false, message: "Creation failed" } });
+
         render(<CreateProduct />);
+
+        //Act
         fireEvent.click(screen.getByText("CREATE PRODUCT"));
 
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Creation failed");
         });
     });
 
-    test("shows error toast when product creation throws", async () => {
+    it("shows error toast when product creation fails", async () => {
+        //Arrange
         axios.post.mockRejectedValueOnce(new Error("Server error"));
+
         render(<CreateProduct />);
+
+        //Act
         fireEvent.click(screen.getByText("CREATE PRODUCT"));
 
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("something went wrong");
         });
     });
 
-    test("sets category when Select category changes", async () => {
+    it("sets category when Select category changes", async () => {
+        //Arrange
         render(<CreateProduct />);
-        await waitFor(() => screen.getByText("Electronics"));
 
-        const categorySelect = screen.getByRole("combobox", {
-            name: /Select a category/i
-        });
+        await waitFor(() => screen.getByText("Cat 1"));
+        const categorySelect = screen.getByRole("combobox", { name: /Select a category/i });
+
+        //Act
         fireEvent.change(categorySelect, { target: { value: "c1" } });
 
+        //Assert
         expect(categorySelect.value).toBe("c1");
     });
 
-    test("sets shipping when Select Shipping changes", async () => {
+    it("sets shipping when Select Shipping changes", async () => {
+        //Arrange
         render(<CreateProduct />);
 
-        const shippingSelect = screen.getByRole("combobox", {
-            name: /Select Shipping/i
-        });
+        const shippingSelect = screen.getByRole("combobox", { name: /Select Shipping/i });
+
+        //Act
         fireEvent.change(shippingSelect, { target: { value: "1" } });
 
+        //Assert
         expect(shippingSelect.value).toBe("1");
     });
 
-    test("sets photo when file is uploaded and shows filename", () => {
+    it("sets photo when file is uploaded and shows filename", () => {
+        //Arrange
         render(<CreateProduct />);
 
         const fakeFile = new File(["image"], "photo.jpg", { type: "image/jpeg" });
-
         const fileInput = document.querySelector('input[type="file"]');
 
-        fireEvent.change(fileInput, {
-            target: { files: [fakeFile] },
-        });
+        //Act
+        fireEvent.change(fileInput, { target: { files: [fakeFile] } });
 
+        //Assert
         expect(screen.getByText("photo.jpg")).toBeInTheDocument();
     });
 });

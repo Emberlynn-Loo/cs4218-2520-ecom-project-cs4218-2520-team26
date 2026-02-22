@@ -8,11 +8,8 @@ import UpdateProduct from "./UpdateProduct";
 //Emberlynn Loo, A0255614E
 
 jest.mock("axios");
+
 jest.mock("react-hot-toast");
-jest.mock("react-router-dom", () => ({
-    useNavigate: jest.fn(),
-    useParams: jest.fn(),
-}));
 
 jest.mock("./../../components/Layout", () => ({
     __esModule: true,
@@ -43,26 +40,30 @@ jest.mock("antd", () => {
 global.URL.createObjectURL = jest.fn(() => "fake-url");
 
 const mockNavigate = jest.fn();
+jest.mock("react-router-dom", () => ({
+    useNavigate: () => mockNavigate,
+    useParams: jest.fn(),
+}));
+
 const mockProduct = {
     product: {
         _id: "p1",
-        name: "Test Product",
+        name: "Product 1",
         description: "Test description",
-        price: 99,
+        price: 999,
         quantity: 5,
         shipping: true,
         category: { _id: "c1" },
     },
 };
 const mockCategories = [
-    { _id: "c1", name: "Electronics" },
-    { _id: "c2", name: "Books" },
+    { _id: "c1", name: "Cat 1" },
+    { _id: "c2", name: "Cat 2" },
 ];
 
 describe("UpdateProduct", () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        useNavigate.mockReturnValue(mockNavigate);
         useParams.mockReturnValue({ slug: "test-product" });
 
         axios.get.mockImplementation((url) => {
@@ -75,38 +76,50 @@ describe("UpdateProduct", () => {
         });
     });
 
-    test("renders Update Product page", async () => {
+    it("renders Update Product page", async () => {
+        // Arrange + Act
         render(<UpdateProduct />);
+
+        // Assert
         expect(screen.getByText("Update Product")).toBeInTheDocument();
         expect(screen.getByText("UPDATE PRODUCT")).toBeInTheDocument();
         expect(screen.getByText("DELETE PRODUCT")).toBeInTheDocument();
     });
 
-    test("loads product data into form fields on mount", async () => {
+    it("loads product data into form fields on initial load", async () => {
+        // Arrange + Act
         render(<UpdateProduct />);
+
+        // Assert
         await waitFor(() => {
-            expect(screen.getByDisplayValue("Test Product")).toBeInTheDocument();
+            expect(screen.getByDisplayValue("Product 1")).toBeInTheDocument();
             expect(screen.getByDisplayValue("Test description")).toBeInTheDocument();
-            expect(screen.getByDisplayValue("99")).toBeInTheDocument();
+            expect(screen.getByDisplayValue("999")).toBeInTheDocument();
             expect(screen.getByDisplayValue("5")).toBeInTheDocument();
         });
     });
 
-    test("loads categories on mount", async () => {
+    it("loads categories on initial load", async () => {
+        // Arrange + Act
         render(<UpdateProduct />);
+
+        // Assert
         await waitFor(() => {
-            expect(screen.getByText("Electronics")).toBeInTheDocument();
+            expect(screen.getByText("Cat 1")).toBeInTheDocument();
         });
     });
 
-    test("shows error toast when getAllCategory fails", async () => {
+    it("shows error toast when getAllCategory fails", async () => {
+        // Arrange
         axios.get.mockImplementation((url) => {
-            if (url.includes("get-product")) {
-                return Promise.resolve({ data: mockProduct });
-            }
+            if (url.includes("get-product")) return Promise.resolve({ data: mockProduct });
             return Promise.reject(new Error("Network error"));
         });
+
+        // Act
         render(<UpdateProduct />);
+
+        // Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith(
                 "Something wwent wrong in getting catgeory"
@@ -114,107 +127,156 @@ describe("UpdateProduct", () => {
         });
     });
 
-    test("does not set categories when success is false", async () => {
+    it("does not set categories when success is false", async () => {
+        // Arrange
         axios.get.mockImplementation((url) => {
-            if (url.includes("get-product")) {
-                return Promise.resolve({ data: mockProduct });
-            }
+            if (url.includes("get-product")) return Promise.resolve({ data: mockProduct });
             return Promise.resolve({ data: { success: false } });
         });
+
+        // Act
         render(<UpdateProduct />);
+
         await waitFor(() => expect(axios.get).toHaveBeenCalled());
-        expect(screen.queryByText("Electronics")).not.toBeInTheDocument();
+
+        // Assert
+        expect(screen.queryByText("Cat 1")).not.toBeInTheDocument();
     });
 
-    test("logs error when getSingleProduct fails", async () => {
+    it("logs error when getSingleProduct fails", async () => {
+        // Arrange
         const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => { });
+
         axios.get.mockImplementation((url) => {
-            if (url.includes("get-product")) {
-                return Promise.reject(new Error("fetch failed"));
-            }
-            return Promise.resolve({
-                data: { success: true, category: mockCategories },
-            });
+            if (url.includes("get-product")) return Promise.reject(new Error("fetch failed"));
+            return Promise.resolve({ data: { success: true, category: mockCategories } });
         });
+
+        // Act
         render(<UpdateProduct />);
+
+        // Assert
         await waitFor(() => {
             expect(consoleSpy).toHaveBeenCalled();
         });
         consoleSpy.mockRestore();
     });
 
-    test("updates name input when typed", async () => {
+    it("updates name input when typed", async () => {
+        // Arrange
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
+
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
+
+        // Act
         fireEvent.change(screen.getByPlaceholderText("write a name"), {
             target: { value: "New Name" },
         });
+
+        // Assert
         expect(screen.getByDisplayValue("New Name")).toBeInTheDocument();
     });
 
-    test("updates description when typed", async () => {
+    it("updates description when typed", async () => {
+        // Arrange
         render(<UpdateProduct />);
+
         await waitFor(() => screen.getByDisplayValue("Test description"));
+
+        // Act
         fireEvent.change(screen.getByPlaceholderText("write a description"), {
             target: { value: "New description" },
         });
+
+        // Assert
         expect(screen.getByDisplayValue("New description")).toBeInTheDocument();
     });
 
-    test("updates price when typed", async () => {
+    it("updates price when typed", async () => {
+        // Arrange
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("99"));
+
+        await waitFor(() => screen.getByDisplayValue("999"));
+
+        // Act
         fireEvent.change(screen.getByPlaceholderText("write a Price"), {
             target: { value: "199" },
         });
+
+        // Assert
         expect(screen.getByDisplayValue("199")).toBeInTheDocument();
     });
 
-    test("updates quantity when typed", async () => {
+    it("updates quantity when typed", async () => {
+        // Arrange
         render(<UpdateProduct />);
+
         await waitFor(() => screen.getByDisplayValue("5"));
+
+        // Act
         fireEvent.change(screen.getByPlaceholderText("write a quantity"), {
             target: { value: "20" },
         });
+
+        // Assert
         expect(screen.getByDisplayValue("20")).toBeInTheDocument();
     });
 
-    test("sets category when dropdown changes", async () => {
+    it("sets category when dropdown changes", async () => {
+        // Arrange
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByText("Electronics"));
-        const categorySelect = screen.getByRole("combobox", {
-            name: /select a category/i,
-        });
+
+        await waitFor(() => screen.getByText("Cat 1"));
+        const categorySelect = screen.getByRole("combobox", { name: /select a category/i });
+
+        // Act
         fireEvent.change(categorySelect, { target: { value: "c2" } });
+
+        // Assert
         expect(categorySelect.value).toBe("c2");
     });
 
-    test("sets shipping when dropdown changes", async () => {
+    it("sets shipping when dropdown changes", async () => {
+        // Arrange
         render(<UpdateProduct />);
-        const shippingSelect = screen.getByRole("combobox", {
-            name: /select shipping/i,
-        });
+
+        const shippingSelect = screen.getByRole("combobox", { name: /select shipping/i });
+
+        // Act
         fireEvent.change(shippingSelect, { target: { value: "1" } });
+
+        // Assert
         expect(shippingSelect).toBeInTheDocument();
     });
 
-    test("shows filename and photo preview when file uploaded", async () => {
+    it("shows filename and photo preview when file uploaded", async () => {
+        // Arrange
         render(<UpdateProduct />);
-        const fakeFile = new File(["image"], "newphoto.jpg", {
-            type: "image/jpeg",
-        });
+
+        const fakeFile = new File(["image"], "newphoto.jpg", { type: "image/jpeg" });
         const fileInput = document.querySelector('input[type="file"]');
+
+        // Act
         fireEvent.change(fileInput, { target: { files: [fakeFile] } });
+
+        // Assert
         await waitFor(() => {
             expect(screen.getByText("newphoto.jpg")).toBeInTheDocument();
         });
     });
 
-    test("updates product successfully and navigates", async () => {
+    it("updates product successfully and navigates", async () => {
+        // Arrange
         axios.put.mockResolvedValueOnce({ data: { success: true } });
+
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
+
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
+
+        // Act
         fireEvent.click(screen.getByText("UPDATE PRODUCT"));
+
+        // Assert
         await waitFor(() => {
             expect(axios.put).toHaveBeenCalled();
             expect(toast.success).toHaveBeenCalledWith("Product Updated Successfully");
@@ -222,34 +284,53 @@ describe("UpdateProduct", () => {
         });
     });
 
-    test("shows error toast when update returns success false", async () => {
-        axios.put.mockResolvedValueOnce({
-            data: { success: false, message: "Update failed" },
-        });
+    it("shows error toast when update returns success false", async () => {
+        // Arrange
+        axios.put.mockResolvedValueOnce({ data: { success: false, message: "Update failed" } });
+
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
+
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
+
+        // Act
         fireEvent.click(screen.getByText("UPDATE PRODUCT"));
+
+        // Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Update failed");
         });
     });
 
-    test("shows error toast when update throws", async () => {
+    it("shows error toast when update fails", async () => {
+        // Arrange
         axios.put.mockRejectedValueOnce(new Error("Server error"));
+
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
+
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
+
+        // Act
         fireEvent.click(screen.getByText("UPDATE PRODUCT"));
+
+        // Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("something went wrong");
         });
     });
 
-    test("deletes product when prompt is confirmed", async () => {
+    it("deletes product when prompt is confirmed", async () => {
+        // Arrange
         window.prompt = jest.fn().mockReturnValue("yes");
         axios.delete.mockResolvedValueOnce({ data: { success: true } });
+
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
+
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
+
+        // Act
         fireEvent.click(screen.getByText("DELETE PRODUCT"));
+
+        // Assert
         await waitFor(() => {
             expect(axios.delete).toHaveBeenCalled();
             expect(toast.success).toHaveBeenCalledWith("Product Deleted Successfully");
@@ -257,49 +338,72 @@ describe("UpdateProduct", () => {
         });
     });
 
-    test("shows error toast when delete returns success false", async () => {
-        axios.delete.mockResolvedValueOnce({
-            data: { success: false, message: "Delete failed" },
-        });
+    it("shows error toast when delete returns success false", async () => {
+        // Arrange
+        axios.delete.mockResolvedValueOnce({ data: { success: false, message: "Delete failed" } });
+
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
+
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
+
+        // Act
         fireEvent.click(screen.getByText("DELETE PRODUCT"));
+
+        // Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Delete failed");
         });
     });
 
-    test("does not delete when prompt is cancelled", async () => {
+    it("does not delete when prompt is cancelled", async () => {
+        // Arrange
         window.prompt = jest.fn().mockReturnValue(null);
+
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
+
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
+
+        // Act
         fireEvent.click(screen.getByText("DELETE PRODUCT"));
+
+        // Assert
         expect(axios.delete).not.toHaveBeenCalled();
     });
 
-    test("shows error toast when delete throws", async () => {
+    it("shows error toast when delete fails", async () => {
+        // Arrange
         window.prompt = jest.fn().mockReturnValue("yes");
         axios.delete.mockRejectedValueOnce(new Error("Delete failed"));
+
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
+
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
+
+        // Act
         fireEvent.click(screen.getByText("DELETE PRODUCT"));
+
+        // Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Something went wrong");
         });
     });
 
-    test("appends photo to form data when photo is set", async () => {
+    it("appends photo to form data when photo is set", async () => {
+        // Arrange
         axios.put.mockResolvedValueOnce({ data: { success: true } });
         render(<UpdateProduct />);
-        await waitFor(() => screen.getByDisplayValue("Test Product"));
 
+        await waitFor(() => screen.getByDisplayValue("Product 1"));
         const fakeFile = new File(["image"], "test.jpg", { type: "image/jpeg" });
         const fileInput = document.querySelector('input[type="file"]');
-        fireEvent.change(fileInput, { target: { files: [fakeFile] } });
 
+        fireEvent.change(fileInput, { target: { files: [fakeFile] } });
         await waitFor(() => screen.getByText("test.jpg"));
+
+        // Act
         fireEvent.click(screen.getByText("UPDATE PRODUCT"));
 
+        // Assert
         await waitFor(() => {
             expect(axios.put).toHaveBeenCalled();
             expect(toast.success).toHaveBeenCalledWith("Product Updated Successfully");

@@ -7,6 +7,7 @@ import CreateCategory from "./CreateCategory";
 // Emberlynn Loo, A0255614E
 
 jest.mock("axios");
+
 jest.mock("react-hot-toast");
 
 jest.mock("./../../components/Layout", () => ({
@@ -30,8 +31,8 @@ jest.mock("antd", () => ({
 }));
 
 const mockCategories = [
-    { _id: "1", name: "Electronics" },
-    { _id: "2", name: "Books" },
+    { _id: "c1", name: "Cat 1" },
+    { _id: "c2", name: "Cat 2" },
 ];
 
 describe("CreateCategory", () => {
@@ -42,213 +43,263 @@ describe("CreateCategory", () => {
         });
     });
 
-    test("renders page with heading and form", async () => {
+    it("renders page with heading and form", async () => {
+        //Arrange + Act
         render(<CreateCategory />);
+
+        //Assert
         expect(screen.getByText("Manage Category")).toBeInTheDocument();
         expect(screen.getByPlaceholderText("Enter new category")).toBeInTheDocument();
-        expect(screen.getByText("Submit")).toBeInTheDocument();
     });
 
-    test("loads and displays categories on mount", async () => {
+    it("gets and displays categories on initial load", async () => {
+        //Arrange + Act
         render(<CreateCategory />);
+
+        //Assert
         await waitFor(() => {
-            expect(screen.getByText("Electronics")).toBeInTheDocument();
-            expect(screen.getByText("Books")).toBeInTheDocument();
+            expect(screen.getByText("Cat 1")).toBeInTheDocument();
+            expect(screen.getByText("Cat 2")).toBeInTheDocument();
         });
     });
 
-    test("shows error toast when getAllCategory fails", async () => {
+    it("shows error toast when getAllCategory fails", async () => {
+        //Arrange
         axios.get.mockRejectedValueOnce(new Error("Network error"));
+
+        //Act
         render(<CreateCategory />);
+
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalled();
         });
     });
 
-    test("submits new category successfully", async () => {
+    it("submits new category successfully", async () => {
+        //Arrange
         axios.post.mockResolvedValueOnce({ data: { success: true } });
         render(<CreateCategory />);
 
+        //Act
         fireEvent.change(screen.getByPlaceholderText("Enter new category"), {
-            target: { value: "Clothing" },
+            target: { value: "Cat 3" },
         });
+
         fireEvent.click(screen.getByText("Submit"));
 
+        //Assert
         await waitFor(() => {
             expect(axios.post).toHaveBeenCalledWith(
                 "/api/v1/category/create-category",
-                { name: "Clothing" }
+                { name: "Cat 3" }
             );
-            expect(toast.success).toHaveBeenCalledWith("Clothing is created");
+            expect(toast.success).toHaveBeenCalledWith("Cat 3 is created");
         });
     });
 
-    test("shows error toast when category creation fails with success false", async () => {
+    it("shows error toast when creating category fails with false success", async () => {
+        //Arrange
         axios.post.mockResolvedValueOnce({
             data: { success: false, message: "Already exists" },
         });
         render(<CreateCategory />);
 
+        //Act
         fireEvent.change(screen.getByPlaceholderText("Enter new category"), {
-            target: { value: "Electronics" },
+            target: { value: "Cat 1" },
         });
+
         fireEvent.click(screen.getByText("Submit"));
 
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Already exists");
         });
     });
 
-    test("does not set categories when success is false", async () => {
+    it("does not set categories when success is false", async () => {
+        //Arrange
         axios.get.mockResolvedValueOnce({
             data: { success: false, category: [] },
         });
+
+        //Act
         render(<CreateCategory />);
+
         await waitFor(() => {
             expect(axios.get).toHaveBeenCalled();
         });
-        expect(screen.queryByText("Electronics")).not.toBeInTheDocument();
+
+        //Assert
+        expect(screen.queryByText("Cat 1")).not.toBeInTheDocument();
     });
 
-    test("shows error toast when category creation throws", async () => {
+    it("shows error toast when creating category fails", async () => {
+        //Arrange
         axios.post.mockRejectedValueOnce(new Error("Server error"));
+
         render(<CreateCategory />);
 
+        //Act
         fireEvent.click(screen.getByText("Submit"));
 
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Something went wrong in input form");
         });
     });
 
-    test("opens modal and populates field when Edit is clicked", async () => {
+    it("opens modal with selected category value when Edit is clicked", async () => {
+        //Arrange
         render(<CreateCategory />);
-        await waitFor(() => screen.getByText("Electronics"));
 
+        await waitFor(() => screen.getByText("Cat 1"));
+
+        //Act
         fireEvent.click(screen.getAllByText("Edit")[0]);
 
+        //Assert
         await waitFor(() => {
             const inputs = screen.getAllByPlaceholderText("Enter new category");
             expect(inputs.length).toBe(2);
-            expect(inputs[1].value).toBe("Electronics");
+            expect(inputs[1].value).toBe("Cat 1");
         });
     });
 
-    test("updates category successfully", async () => {
+    it("updates category successfully", async () => {
+        //Arrange
         axios.put.mockResolvedValueOnce({ data: { success: true } });
         render(<CreateCategory />);
-        await waitFor(() => screen.getByText("Electronics"));
 
+        await waitFor(() => screen.getByText("Cat 1"));
         fireEvent.click(screen.getAllByText("Edit")[0]);
+        await waitFor(() => screen.getByDisplayValue("Cat 1"));
 
-        await waitFor(() => screen.getByDisplayValue("Electronics"));
-
+        //Act
         const inputs = screen.getAllByPlaceholderText("Enter new category");
-        const modalInput = inputs[inputs.length - 1];
-        fireEvent.change(modalInput, { target: { value: "Updated Electronics" } });
 
-        const submitButtons = screen.getAllByText("Submit");
-        fireEvent.click(submitButtons[submitButtons.length - 1]);
+        fireEvent.change(inputs[inputs.length - 1], { target: { value: "Updated Cat 1" } });
+        fireEvent.click(screen.getAllByText("Submit")[screen.getAllByText("Submit").length - 1]);
 
+        //Assert
         await waitFor(() => {
             expect(axios.put).toHaveBeenCalled();
-            expect(toast.success).toHaveBeenCalledWith("Updated Electronics is updated");
+            expect(toast.success).toHaveBeenCalledWith("Updated Cat 1 is updated");
         });
     });
 
-    test("shows error toast when update fails with success false", async () => {
+    it("shows error toast when updating fails with false success", async () => {
+        //Arrange
         axios.put.mockResolvedValueOnce({
             data: { success: false, message: "Update failed" },
         });
+
         render(<CreateCategory />);
-        await waitFor(() => screen.getByText("Electronics"));
 
+        await waitFor(() => screen.getByText("Cat 1"));
         fireEvent.click(screen.getAllByText("Edit")[0]);
-        await waitFor(() => screen.getByDisplayValue("Electronics"));
+        await waitFor(() => screen.getByDisplayValue("Cat 1"));
 
-        const submitButtons = screen.getAllByText("Submit");
-        fireEvent.click(submitButtons[submitButtons.length - 1]);
+        //Act
+        fireEvent.click(screen.getAllByText("Submit")[screen.getAllByText("Submit").length - 1]);
 
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Update failed");
         });
     });
 
-    test("shows error toast when category update throws", async () => {
-        axios.post.mockRejectedValueOnce(new Error("Server error"));
+    it("shows error toast when category update fails", async () => {
+        //Arrange
+        axios.put.mockRejectedValueOnce(new Error("Server error"));
         render(<CreateCategory />);
-        await waitFor(() => screen.getByText("Electronics"));
 
+        await waitFor(() => screen.getByText("Cat 1"));
         fireEvent.click(screen.getAllByText("Edit")[0]);
         await waitFor(() => {
             const inputs = screen.getAllByPlaceholderText("Enter new category");
             expect(inputs.length).toBe(2);
         });
 
-        const submitButtons = screen.getAllByText("Submit");
-        fireEvent.click(submitButtons[submitButtons.length - 1]);
+        //Act
+        fireEvent.click(screen.getAllByText("Submit")[screen.getAllByText("Submit").length - 1]);
 
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Something went wrong");
         });
     });
 
-    test("deletes category successfully", async () => {
+    it("deletes category successfully", async () => {
+        //Arrange
         axios.delete.mockResolvedValueOnce({ data: { success: true } });
         render(<CreateCategory />);
-        await waitFor(() => screen.getByText("Electronics"));
 
+        await waitFor(() => screen.getByText("Cat 1"));
+
+        //Act
         fireEvent.click(screen.getAllByText("Delete")[0]);
 
+        //Assert
         await waitFor(() => {
             expect(axios.delete).toHaveBeenCalledWith(
-                "/api/v1/category/delete-category/1"
+                "/api/v1/category/delete-category/c1"
             );
             expect(toast.success).toHaveBeenCalledWith("category is deleted");
         });
     });
 
-    test("shows error toast when delete fails with success false", async () => {
+    it("shows error toast when deleting fails with false success", async () => {
+        //Arrange
         axios.delete.mockResolvedValueOnce({
             data: { success: false, message: "Delete failed" },
         });
         render(<CreateCategory />);
-        await waitFor(() => screen.getByText("Electronics"));
 
+        await waitFor(() => screen.getByText("Cat 1"));
+
+        //Act
         fireEvent.click(screen.getAllByText("Delete")[0]);
 
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Delete failed");
         });
     });
 
-    test("shows error toast when delete throws", async () => {
+    it("shows error toast when delete fails", async () => {
+        //Arrange
         axios.delete.mockRejectedValueOnce(new Error("Server error"));
         render(<CreateCategory />);
-        await waitFor(() => screen.getByText("Electronics"));
 
+        await waitFor(() => screen.getByText("Cat 1"));
+
+        //Act
         fireEvent.click(screen.getAllByText("Delete")[0]);
 
+        //Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Something went wrong");
         });
     });
 
-    test("closes modal when cancel is clicked", async () => {
+    it("closes modal when cancel is clicked", async () => {
+        //Arrange
         render(<CreateCategory />);
-        await waitFor(() => screen.getByText("Electronics"));
 
+        await waitFor(() => screen.getByText("Cat 1"));
         fireEvent.click(screen.getAllByText("Edit")[0]);
         await waitFor(() => {
-            const inputs = screen.getAllByPlaceholderText("Enter new category");
-            expect(inputs.length).toBe(2);
+            expect(screen.getAllByPlaceholderText("Enter new category").length).toBe(2);
         });
 
+        //Act
         fireEvent.click(screen.getByText("Close"));
 
+        //Assert
         await waitFor(() => {
-            const inputs = screen.getAllByPlaceholderText("Enter new category");
-            expect(inputs.length).toBe(1);
+            expect(screen.getAllByPlaceholderText("Enter new category").length).toBe(1);
         });
     });
 });
