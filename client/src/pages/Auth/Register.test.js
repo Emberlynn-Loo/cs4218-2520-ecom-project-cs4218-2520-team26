@@ -193,6 +193,7 @@ describe('Register Component', () => {
     axios.post.mockRejectedValueOnce(new Error('Server error'));
     const { getByText, getByPlaceholderText } = renderRegister();
     fillValidFormWithMockData();
+    jest.spyOn(console, "log").mockImplementation(() => {});
 
     // Act
     fireEvent.click(getByText(formFields.button));
@@ -200,5 +201,6 @@ describe('Register Component', () => {
     // Assert
     await waitFor(() => expect(axios.post).toHaveBeenCalled());
     expect(toast.error).toHaveBeenCalledWith('Something went wrong');
+    console.log.mockRestore();
   });
 });

@@ -82,7 +82,7 @@ describe("Orders Component", () => {
             // Arrange
             useAuth.mockReturnValue([{ token: "test-token" }, jest.fn()]);
             axios.get.mockRejectedValue(new Error("API Error"));
-            console.log = jest.fn();
+            jest.spyOn(console, "log").mockImplementation(() => {});
 
             // Act
             render(<Orders />);
@@ -91,6 +91,8 @@ describe("Orders Component", () => {
             await waitFor(() => {
                 expect(console.log).toHaveBeenCalledWith(new Error("API Error"));
             });
+
+            console.log.mockRestore();
         });
     });
 

@@ -228,6 +228,7 @@ describe('Login Component', () => {
         axios.post.mockRejectedValueOnce(new Error('Server error'));
         render(<Login />);
         fillLoginForm();
+        jest.spyOn(console, "log").mockImplementation(() => {});
 
         // Act
         fireEvent.click(screen.getByText(loginFormFields.loginButton));
@@ -235,6 +236,7 @@ describe('Login Component', () => {
         // Assert
         await waitFor(() => expect(axios.post).toHaveBeenCalled());
         expect(toast.error).toHaveBeenCalledWith('Something went wrong');
+        console.log.mockRestore();
     });
 
     it("navigates to forgot password page when 'Forgot Password' button is clicked", () => {
