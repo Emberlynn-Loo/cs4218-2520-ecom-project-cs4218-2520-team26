@@ -19,7 +19,7 @@ describe("Search Component", () => {
         jest.clearAllMocks();
     });
 
-    it("should render Search component without crashing", () => {
+    it("should render Search Results heading", () => {
         // Arrange
         useSearch.mockReturnValue([{ results: [] }, jest.fn()]);
 
@@ -27,7 +27,7 @@ describe("Search Component", () => {
         render(<Search />);
 
         // Assert
-        expect(screen.getByText("Search Resuts")).toBeInTheDocument();
+        expect(screen.getByText("Search Results")).toBeInTheDocument();
     });
 
     describe("Search Results Count", () => {
