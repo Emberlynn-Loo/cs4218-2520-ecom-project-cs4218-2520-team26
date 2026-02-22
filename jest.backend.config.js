@@ -8,7 +8,7 @@ module.exports = {
   // which test to run
   testMatch: [
     "<rootDir>/controllers/categoryController.test.js",
-    // "<rootDir>/models/*.test.js",
+    // "<rootDir>/models/userModel.test.js",
   ],
 
   // jest code coverage

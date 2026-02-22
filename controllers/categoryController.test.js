@@ -1,23 +1,52 @@
-import {
-    createCategoryController,
-    updateCategoryController,
-    categoryControlller,
-    singleCategoryController,
-    deleteCategoryCOntroller,
-} from "../controllers/categoryController.js";
-
 import categoryModel from "../models/categoryModel.js";
 import slugify from "slugify";
 
+import {
+    categoryController,
+    singleCategoryController,
+    createCategoryController,
+    updateCategoryController,
+    deleteCategoryController,
+} from "../controllers/categoryController.js";
+
 //Emberlynn Loo, A0255614E 
 
-jest.mock("../models/categoryModel.js");
-jest.mock("slugify");
+jest.mock("../models/categoryModel.js", () => {
+    const saveMock = jest.fn();
+
+    const mockModel = jest.fn(() => ({
+        save: saveMock,
+    }));
+
+    mockModel.find = jest.fn();
+    mockModel.findOne = jest.fn();
+    mockModel.findByIdAndUpdate = jest.fn();
+    mockModel.findByIdAndDelete = jest.fn();
+
+    return {
+        __esModule: true,
+        default: mockModel,
+    };
+});
+
+jest.mock("slugify", () => ({
+    __esModule: true,
+    default: jest.fn(),
+}));
 
 const mockResponse = () => {
     const res = {};
     res.status = jest.fn().mockReturnValue(res);
     res.send = jest.fn().mockReturnValue(res);
+    return res;
+};
+
+const createMockResponse = () => {
+    const res = {
+        status: jest.fn(),
+        send: jest.fn(),
+    };
+    res.status.mockReturnValue(res);
     return res;
 };
 
@@ -99,7 +128,7 @@ describe("updateCategoryController", () => {
     });
 });
 
-describe("deleteCategoryCOntroller", () => {
+describe("deleteCategoryController", () => {
 
     test("should delete category", async () => {
         const req = { params: { id: "1" } };
@@ -107,7 +136,7 @@ describe("deleteCategoryCOntroller", () => {
 
         categoryModel.findByIdAndDelete.mockResolvedValue();
 
-        await deleteCategoryCOntroller(req, res);
+        await deleteCategoryController(req, res);
 
         expect(res.status).toHaveBeenCalledWith(200);
     });
@@ -118,30 +147,12 @@ describe("deleteCategoryCOntroller", () => {
 
         categoryModel.findByIdAndDelete.mockRejectedValue(new Error());
 
-        await deleteCategoryCOntroller(req, res);
+        await deleteCategoryController(req, res);
 
         expect(res.status).toHaveBeenCalledWith(500);
     });
 
 });
-
-// Earnest Suprapmo, A0251966U
-jest.mock("../models/categoryModel.js", () => ({
-    __esModule: true,
-    default: {
-        find: jest.fn(),
-        findOne: jest.fn(),
-    },
-}));
-
-const createMockResponse = () => {
-    const res = {
-        status: jest.fn(),
-        send: jest.fn(),
-    };
-    res.status.mockReturnValue(res);
-    return res;
-};
 
 describe("categoryController", () => {
     beforeEach(() => {
