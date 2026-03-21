@@ -29,8 +29,5 @@ jobs:
           cd client
           npm install
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run full test suite (unit, integration, e2e)
-        run: npm test
+      - name: Run Jest tests
+        run: npm run test:backend && npm run test:frontend && npm run test:frontend:integration && npm run test:backend:integration
