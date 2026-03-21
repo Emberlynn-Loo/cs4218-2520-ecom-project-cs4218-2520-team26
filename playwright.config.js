@@ -1,4 +1,7 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -7,7 +10,6 @@ export default defineConfig({
   workers: 1,
   use: {
     baseURL: "http://localhost:3000",
-    headless: true,
     trace: "on-first-retry",
   },
   webServer: {
@@ -17,3 +19,4 @@ export default defineConfig({
     timeout: 120000,
   },
 });
+
