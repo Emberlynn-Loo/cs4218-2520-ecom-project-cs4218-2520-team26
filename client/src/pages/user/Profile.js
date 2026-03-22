@@ -46,7 +46,8 @@ const Profile = () => {
       }
     } catch (error) {
       console.log(error);
-      toast.error("Something went wrong");
+      const apiErrorMessage = error?.response?.data?.error;
+      toast.error(apiErrorMessage || "Something went wrong");
     }
   };
   return (
