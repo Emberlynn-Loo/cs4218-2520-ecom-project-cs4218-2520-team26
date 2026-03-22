@@ -1,7 +1,9 @@
 import React from "react";
+import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "@testing-library/react";
 import Search from "./Search";
 const { useSearch } = require("../context/search");
+const { useCart } = require("../context/cart");
 
 const mockNavigate = jest.fn();
 jest.mock("react-router-dom", () => ({
@@ -19,10 +21,15 @@ jest.mock("../context/search", () => ({
     useSearch: jest.fn(),
 }));
 
+jest.mock("../context/cart", () => ({
+    useCart: jest.fn(),
+}));
+
 // Ashley Chang Le Xuan, A0252633J
 describe("Search Component", () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        useCart.mockReturnValue([[], jest.fn()]);
         mockNavigate.mockClear();
     });
 
@@ -31,7 +38,11 @@ describe("Search Component", () => {
         useSearch.mockReturnValue([{ results: [] }, jest.fn()]);
 
         // Act
-        render(<Search />);
+        render(
+        <MemoryRouter>
+            <Search />
+        </MemoryRouter>
+        );
 
         // Assert
         expect(screen.getByText("Search Results")).toBeInTheDocument();
@@ -43,7 +54,11 @@ describe("Search Component", () => {
             useSearch.mockReturnValue([{ results: [] }, jest.fn()]);
 
             // Act
-            render(<Search />);
+            render(
+            <MemoryRouter>
+                <Search />
+            </MemoryRouter>
+            );
 
             // Assert
             expect(screen.getByText("No Products Found")).toBeInTheDocument();
@@ -57,7 +72,11 @@ describe("Search Component", () => {
             useSearch.mockReturnValue([{ results: mockResults }, jest.fn()]);
 
             // Act
-            render(<Search />);
+            render(
+            <MemoryRouter>
+                <Search />
+            </MemoryRouter>
+            );
 
             // Assert
             expect(screen.getByText("Found 1")).toBeInTheDocument();
@@ -72,7 +91,11 @@ describe("Search Component", () => {
             useSearch.mockReturnValue([{ results: mockResults }, jest.fn()]);
 
             // Act
-            render(<Search />);
+            render(
+            <MemoryRouter>
+                <Search />
+            </MemoryRouter>
+            );
 
             // Assert
             expect(screen.getByText("Found 2")).toBeInTheDocument();
@@ -89,7 +112,11 @@ describe("Search Component", () => {
         useSearch.mockReturnValue([{ results: mockResults }, jest.fn()]);
 
         // Act
-        render(<Search />);
+        render(
+        <MemoryRouter>
+            <Search />
+        </MemoryRouter>
+        );
 
         // Assert
         expect(screen.getByText("Found 3")).toBeInTheDocument();
@@ -106,7 +133,11 @@ describe("Search Component", () => {
         useSearch.mockReturnValue([{ results: mockResults }, jest.fn()]);
 
         // Act
-        render(<Search />);
+        render(
+        <MemoryRouter>
+            <Search />
+        </MemoryRouter>
+        );
 
         // Assert
         expect(screen.getByText("Test Product")).toBeInTheDocument();
@@ -123,7 +154,11 @@ describe("Search Component", () => {
         useSearch.mockReturnValue([{ results: mockResults }, jest.fn()]);
 
         // Act
-        render(<Search />);
+        render(
+        <MemoryRouter>
+            <Search />
+        </MemoryRouter>
+        );
 
         // Assert
         expect(screen.getByText(`${longDescription.substring(0, 30)}...`)).toBeInTheDocument();
@@ -137,7 +172,11 @@ describe("Search Component", () => {
         useSearch.mockReturnValue([{ results: mockResults }, jest.fn()]);
 
         // Act
-        render(<Search />);
+        render(
+        <MemoryRouter>
+            <Search />
+        </MemoryRouter>
+        );
 
         // Assert
         expect(screen.getByText("More Details")).toBeInTheDocument();
@@ -152,7 +191,11 @@ describe("Search Component", () => {
         useSearch.mockReturnValue([{ results: mockResults }, jest.fn()]);
 
         // Act
-        render(<Search />);
+        render(
+        <MemoryRouter>
+            <Search />
+        </MemoryRouter>
+        );
 
         // Assert
         const img = screen.getByAltText("Product");

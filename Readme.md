@@ -1,5 +1,23 @@
 # CS4218 Project Group 26 - Virtual Vault
 
+## MS2
+
+### Individual Contributions
+**Ashley Chang Le Xuan, A0252633J**
+- Integration (Client)
+  - Profile.integration.test.js
+- Integration (Server)
+  - authController
+    - getAllOrdersController.integration.test.js
+    - getOrdersController.integration.test.js
+    - orderStatusController.integration.test.js
+    - updateProfileController.integration.test.js
+- End-to-End
+  - profile-update.spec.ts
+- Unit-testing
+  - Profile.test.js (added 2 test cases)
+
+
 ## MS1
 
 ### MS1 CI URL

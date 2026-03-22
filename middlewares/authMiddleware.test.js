@@ -66,7 +66,7 @@ describe("authMiddleware", () => {
             });
         });
 
-        it("returns 500 if an error occurs during token verification", async () => {
+        it("returns 401 if an error occurs during token verification", async () => {
             // Arrange
             const error = new Error("Invalid token");
             JWT.verify.mockImplementation(() => {
@@ -77,7 +77,7 @@ describe("authMiddleware", () => {
             await requireSignIn(req, res, next);
 
             // Assert
-            expect(res.status).toHaveBeenCalledWith(500);
+            expect(res.status).toHaveBeenCalledWith(401);
             expect(res.send).toHaveBeenCalledWith({
                 success: false,
                 message: "Unauthorized Access",
@@ -115,7 +115,7 @@ describe("authMiddleware", () => {
             });
         });
 
-        it("returns 401 if user not found", async () => {
+        it("returns 404 if user not found", async () => {
             // Arrange
             userModel.findById.mockResolvedValue(null);
 
@@ -123,7 +123,7 @@ describe("authMiddleware", () => {
             await isAdmin(req, res, next);
 
             // Assert
-            expect(res.status).toHaveBeenCalledWith(401);
+            expect(res.status).toHaveBeenCalledWith(404);
             expect(res.send).toHaveBeenCalledWith({
                 success: false,
                 message: "User not found",

@@ -13,6 +13,10 @@ jest.mock("./../components/Layout", () => ({
     default: ({ children }) => <div>{children}</div>,
 }));
 
+jest.mock("../context/cart", () => ({
+    useCart: jest.fn(() => [[], jest.fn()]),
+}));
+
 jest.mock("../styles/ProductDetailsStyles.css", () => { });
 
 const mockNavigate = jest.fn();

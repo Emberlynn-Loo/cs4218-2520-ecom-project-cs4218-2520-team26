@@ -124,7 +124,7 @@ describe("UpdateProduct", () => {
         // Assert
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith(
-                "Something wwent wrong in getting catgeory"
+                "Something went wrong in getting category"
             );
         });
     });
