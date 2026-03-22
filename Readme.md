@@ -26,6 +26,17 @@
 - End-to-End
    - add-to-cart-checkout.spec.ts
    - homepage-browse-product-spec.ts
+
+**Emberlynn Loo Hui-E, A0255614E**
+- Integration (Client)
+   - ProductDetails.integration.test.js
+   - CreateCategory.integration.test.js
+   - AdminOrders.integration.test.js
+- Integration (Server)
+   - productController.integration.test.js
+- End-to-End
+   - product-details.spec.js
+   - admin-product-management.js
    
 **Khoo Jing Xiang, A0252605L**
 - Integration (Client)
