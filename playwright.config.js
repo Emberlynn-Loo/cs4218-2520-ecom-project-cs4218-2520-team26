@@ -5,6 +5,7 @@ dotenv.config();
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.js",
   fullyParallel: true,
   workers: 1,
   reporter: "html",
@@ -38,12 +39,9 @@ export default defineConfig({
         PORT: "6060",
         MONGO_URL: process.env.MONGO_URL || "",
         JWT_SECRET: process.env.JWT_SECRET || "",
-        BRAINTREE_MERCHANT_ID:
-          process.env.BRAINTREE_MERCHANT_ID || "",
-        BRAINTREE_PUBLIC_KEY:
-          process.env.BRAINTREE_PUBLIC_KEY || "",
-        BRAINTREE_PRIVATE_KEY:
-          process.env.BRAINTREE_PRIVATE_KEY || "",
+        BRAINTREE_MERCHANT_ID: process.env.BRAINTREE_MERCHANT_ID || "",
+        BRAINTREE_PUBLIC_KEY: process.env.BRAINTREE_PUBLIC_KEY || "",
+        BRAINTREE_PRIVATE_KEY: process.env.BRAINTREE_PRIVATE_KEY || "",
       },
     },
   ],

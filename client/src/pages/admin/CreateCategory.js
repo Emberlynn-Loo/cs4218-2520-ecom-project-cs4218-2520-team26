@@ -19,14 +19,16 @@ const CreateCategory = () => {
         name,
       });
       if (data?.success) {
-        toast.success(`${name} is created`);
+        toast.success(data.message || `${name} is created`);
         getAllCategory();
       } else {
         toast.error(data.message);
       }
     } catch (error) {
       console.log(error);
-      toast.error("Something went wrong in input form");
+      toast.error(
+        error?.response?.data?.message || "Something went wrong in input form",
+      );
     }
   };
 
@@ -39,7 +41,9 @@ const CreateCategory = () => {
       }
     } catch (error) {
       console.log(error);
-      toast.error("Something went wrong in getting catgeory");
+      toast.error(
+        error?.response?.data?.message || "Something went wrong in getting category"
+      );
     }
   };
 
@@ -65,7 +69,7 @@ const CreateCategory = () => {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error("Something went wrong");
+      toast.error(error?.response?.data?.message || "Something went wrong");
     }
   };
   //delete category

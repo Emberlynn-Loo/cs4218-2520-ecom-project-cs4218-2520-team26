@@ -3,10 +3,15 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import axios from "axios";
 import AdminOrders from "./AdminOrders";
 import { useAuth } from "../../context/auth";
+import toast from "react-hot-toast";
 
 //Emberlynn Loo, A0255614E
 
 jest.mock("axios");
+jest.mock("react-hot-toast", () => ({
+    success: jest.fn(),
+    error: jest.fn(),
+}));
 
 jest.mock("../../context/auth", () => ({
     useAuth: jest.fn(),
@@ -229,7 +234,7 @@ describe("AdminOrders", () => {
         });
     });
 
-    it("fetches orders again after status change", async () => {
+    it("shows success toast after status change", async () => {
         //Arrange
         useAuth.mockReturnValue([{ token: "test-token" }, jest.fn()]);
 
@@ -243,13 +248,15 @@ describe("AdminOrders", () => {
 
         //Assert
         await waitFor(() => {
-            expect(axios.get).toHaveBeenCalledTimes(2);
+            expect(toast.success).toHaveBeenCalledWith(
+                "Order status updated successfully",
+            );
         });
     });
 
-    it("logs error when getOrders fails", async () => {
+    it("logs error and shows toast when getOrders fails", async () => {
         //Arrange
-        const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => { });
+        const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
         useAuth.mockReturnValue([{ token: "test-token" }, jest.fn()]);
 
         axios.get.mockRejectedValueOnce(new Error("fetch failed"));
@@ -260,13 +267,14 @@ describe("AdminOrders", () => {
         //Assert
         await waitFor(() => {
             expect(consoleSpy).toHaveBeenCalled();
+            expect(toast.error).toHaveBeenCalledWith("Unable to load orders");
         });
         consoleSpy.mockRestore();
     });
 
-    it("logs error when handleChange fails", async () => {
+    it("logs error and shows toast when handleChange fails", async () => {
         //Arrange
-        const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => { });
+        const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
         useAuth.mockReturnValue([{ token: "test-token" }, jest.fn()]);
         axios.put.mockRejectedValueOnce(new Error("update failed"));
@@ -282,6 +290,7 @@ describe("AdminOrders", () => {
         //Assert
         await waitFor(() => {
             expect(consoleSpy).toHaveBeenCalled();
+            expect(toast.error).toHaveBeenCalledWith("Unable to update order status");
         });
         consoleSpy.mockRestore();
     });
