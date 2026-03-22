@@ -17,6 +17,16 @@
 - Unit-testing
   - Profile.test.js (added 2 test cases)
 
+**Earnest Suprapmo, A0251966U**
+- Integration (Client)
+   - CartPage.integration.test.js
+   - HomePage.integration.test.js
+- Integration (Server)
+   - productController.integration.test.js
+- End-to-End
+   - add-to-cart-checkout.spec.ts
+   - homepage-browse-product-spec.ts
+
 
 **Nicholas Koh Zi Lun, A0272806B**
 - Integration (Client)

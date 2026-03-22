@@ -4,12 +4,28 @@ import orderModel from "../models/orderModel.js";
 import { comparePassword, hashPassword } from "./../helpers/authHelper.js";
 import JWT from "jsonwebtoken";
 
+const MAX_EMAIL_LENGTH = 254;
+
+const isValidEmail = (email) => {
+  if (!email || email.length > MAX_EMAIL_LENGTH) {
+    return false;
+  }
+  const atIndex = email.indexOf("@");
+  if (atIndex <= 0 || atIndex === email.length - 1) {
+    return false;
+  }
+  const lastDotIndex = email.lastIndexOf(".");
+  if (lastDotIndex <= atIndex + 1 || lastDotIndex === email.length - 1) {
+    return false;
+  }
+  return true;
+};
+
 export const registerController = async (req, res) => {
   try {
     const { name, email, password, phone, address, answer } = req.body;
     const normalizedEmail = email?.trim().toLowerCase();
-    const validEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const validPhonePattern = /^\+?[0-9]{8,15}$/;
+    const validPhonePattern = /^\+?\d{8,15}$/;
 
     // Validations
     if (!name) {
@@ -22,7 +38,7 @@ export const registerController = async (req, res) => {
         .status(400)
         .send({ success: false, message: "Email is Required" });
     }
-    if (!validEmailPattern.test(normalizedEmail)) {
+    if (!isValidEmail(normalizedEmail)) {
       return res.status(400).send({
         success: false,
         message: "Please enter a valid email address",
@@ -94,7 +110,6 @@ export const loginController = async (req, res) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = email?.trim().toLowerCase();
-    const validEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     // Validation
     if (!email) {
@@ -103,7 +118,7 @@ export const loginController = async (req, res) => {
         message: "Email is required",
       });
     }
-    if (!validEmailPattern.test(normalizedEmail)) {
+    if (!isValidEmail(normalizedEmail)) {
       return res.status(400).send({
         success: false,
         message: "Please enter a valid email address",
