@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "@testing-library/react";
 import Search from "./Search";
 const { useSearch } = require("../context/search");
+const { useCart } = require("../context/cart");
 
 jest.mock("../components/Layout", () => {
     return function MockLayout({ children, title }) {
@@ -14,10 +15,15 @@ jest.mock("../context/search", () => ({
     useSearch: jest.fn(),
 }));
 
+jest.mock("../context/cart", () => ({
+    useCart: jest.fn(),
+}));
+
 // Ashley Chang Le Xuan, A0252633J
 describe("Search Component", () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        useCart.mockReturnValue([[], jest.fn()]);
     });
 
     it("should render Search Results heading", () => {
