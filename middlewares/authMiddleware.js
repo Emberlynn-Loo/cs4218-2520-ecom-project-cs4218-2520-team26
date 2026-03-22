@@ -18,7 +18,7 @@ export const requireSignIn = async (req, res, next) => {
         next();
     } catch (error) {
         console.log(error);
-        res.status(500).send({
+        res.status(401).send({
             success: false,
             message: "Unauthorized Access",
         });
@@ -30,7 +30,7 @@ export const isAdmin = async (req, res, next) => {
     try {
         const user = await userModel.findById(req.user._id);
         if (!user) {
-            return res.status(401).send({
+            return res.status(404).send({
                 success: false,
                 message: "User not found",
             });
