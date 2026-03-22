@@ -63,6 +63,21 @@ describe("Profile Component", () => {
     });
 
     describe("Form Rendering", () => {
+        // Ashley Chang Le Xuan, A0252633J (MS2)
+        it("should render empty fields when auth context is missing user data", () => {
+            // Arrange
+            useAuth.mockReturnValue([null, jest.fn()]);
+
+            // Act
+            render(<Profile />);
+
+            // Assert
+            expect(screen.getByPlaceholderText("Enter Your Name")).toHaveValue("");
+            expect(screen.getByPlaceholderText("Enter Your Email")).toHaveValue("");
+            expect(screen.getByPlaceholderText("Enter Your Phone")).toHaveValue("");
+            expect(screen.getByPlaceholderText("Enter Your Address")).toHaveValue("");
+        });
+
         it("should pre-populate form fields with existing user data", () => {
             // Arrange
             // (uses default mockUser)
@@ -225,6 +240,32 @@ describe("Profile Component", () => {
             // Assert
             await waitFor(() => {
                 expect(toast.error).toHaveBeenCalledWith("Something went wrong");
+            });
+
+            console.log.mockRestore();
+        });
+
+        // Ashley Chang Le Xuan, A0252633J (MS2)
+        it("should display backend error message when API rejects with response error", async () => {
+            // Arrange
+            axios.put.mockRejectedValueOnce({
+                response: {
+                    data: {
+                        error: "Password is required to be at least 6 characters long",
+                    },
+                },
+            });
+            jest.spyOn(console, "log").mockImplementation(() => {});
+            renderComponent();
+
+            // Act
+            fireEvent.click(screen.getByText("UPDATE"));
+
+            // Assert
+            await waitFor(() => {
+                expect(toast.error).toHaveBeenCalledWith(
+                    "Password is required to be at least 6 characters long"
+                );
             });
 
             console.log.mockRestore();
