@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Analyze JMeter results for the quick sanity sweep (90, 120, 150 users).
+Analyze JMeter results for the compact boundary sweep (30-160 users).
 
 Purpose:
 - quickly tell whether each stage is functioning at all
@@ -9,7 +9,7 @@ Purpose:
 - identify the highest healthy stage under configurable thresholds
 
 Usage:
-  python analyze_results_quickcheck.py results/checkout_stress_quickcheck_90_120_150.csv \
+  python analyze_results_quickcheck.py results/checkout_stress_compact_boundary.csv \
       --error-threshold 0.05 --p95-threshold-ms 5000
 """
 
@@ -23,9 +23,15 @@ from pathlib import Path
 
 STAGES = [
     ("Stage 0 - Smoke - 1 users", 1),
-    ("Stage 1 - 90 users", 90),
-    ("Stage 2 - 120 users", 120),
-    ("Stage 3 - 150 users", 150),
+    ("Stage 1 - 30 users", 30),
+    ("Stage 2 - 60 users", 60),
+    ("Stage 3 - 90 users", 90),
+    ("Stage 4 - 110 users", 110),
+    ("Stage 5 - 120 users", 120),
+    ("Stage 6 - 130 users", 130),
+    ("Stage 7 - 140 users", 140),
+    ("Stage 8 - 150 users", 150),
+    ("Stage 9 - 160 users", 160),
 ]
 
 FLOW_LABEL = "Checkout Flow"
@@ -145,7 +151,7 @@ def health_label(s: StageSummary, error_threshold: float, p95_threshold_ms: floa
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("results_csv", nargs="?", default="results/checkout_stress_quickcheck_90_120_150.csv")
+    ap.add_argument("results_csv", nargs="?", default="results/checkout_stress_compact_boundary.csv")
     ap.add_argument("--error-threshold", type=float, default=0.05)
     ap.add_argument("--p95-threshold-ms", type=float, default=5000.0)
     args = ap.parse_args()
@@ -162,7 +168,7 @@ def main() -> None:
     print(f"Loaded {len(rows):,} rows from {path}")
     print()
     print("=" * 140)
-    print("QUICK SANITY SWEEP REPORT (90 / 120 / 150 USERS)")
+    print("COMPACT BOUNDARY SWEEP REPORT (30 / 60 / 90 / 110-160 USERS)")
     print(f"Error threshold: {args.error_threshold:.1%} | p95 threshold: {args.p95_threshold_ms:.0f} ms")
     print("=" * 140)
     print(f"{'Stage':<26} {'Users':>5} {'Health':>10} {'Flows':>8} {'Flow/s':>8} {'ErrRate':>8} {'Flow p50':>10} {'Flow p95':>10} {'Pay p50':>10} {'Pay p95':>10} {'Hard':>7} {'Grace':>7}")
