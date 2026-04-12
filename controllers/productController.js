@@ -15,9 +15,46 @@ const productListCache = {
   expiresAt: 0,
 };
 
+const PHOTO_CACHE_TTL_MS = 5 * 60 * 1000;
+const photoCache = new Map();
+
+const SINGLE_PRODUCT_CACHE_TTL_MS = 10_000;
+const singleProductCache = new Map(); // slug → { payloadJson, expiresAt }
+
+const singleProductInflight = new Map(); // slug → Promise<product>
+
+const RELATED_CACHE_TTL_MS = 10_000;
+const relatedProductCache = new Map(); // "pid:cid" → { payloadJson, expiresAt }
+
+const relatedInflight = new Map(); // "pid:cid" → Promise<products[]>
+
+const COUNT_CACHE_TTL_MS = 30_000;
+const productCountCache = {
+  total: null,
+  expiresAt: 0,
+};
+
 const clearProductListCache = () => {
   productListCache.payloadJson = null;
   productListCache.expiresAt = 0;
+  productCountCache.total = null;
+  productCountCache.expiresAt = 0;
+};
+
+const clearPhotoCache = (pid) => {
+  if (pid) {
+    photoCache.delete(String(pid));
+  } else {
+    photoCache.clear();
+  }
+};
+
+const clearDetailCaches = () => {
+  singleProductCache.clear();
+  relatedProductCache.clear();
+  singleProductInflight.clear();
+  relatedInflight.clear();
+  clearPhotoCache();
 };
 
 const getCachedProductList = () => {
@@ -34,6 +71,7 @@ const setCachedProductList = (payloadJson) => {
 };
 
 export const __clearProductListCacheForTests = clearProductListCache;
+export const __clearDetailCachesForTests = clearDetailCaches;
 
 //payment gateway
 var gateway = new braintree.BraintreeGateway({
@@ -73,6 +111,7 @@ export const createProductController = async (req, res) => {
     }
     await products.save();
     clearProductListCache();
+    clearDetailCaches();
     res.status(201).send({
       success: true,
       message: "Product Created Successfully",
@@ -127,15 +166,35 @@ export const getProductController = async (req, res) => {
 // get single product
 export const getSingleProductController = async (req, res) => {
   try {
-    const product = await productModel
-      .findOne({ slug: req.params.slug })
-      .select("-photo")
-      .populate("category");
-    res.status(200).send({
-      success: true,
-      message: "Single Product Fetched",
-      product,
-    });
+    const { slug } = req.params;
+
+    const cached = singleProductCache.get(slug);
+    if (cached && cached.expiresAt > Date.now()) {
+      return res.status(200).type("application/json").send(cached.payloadJson);
+    }
+
+    let queryPromise = singleProductInflight.get(slug);
+    if (!queryPromise) {
+      queryPromise = productModel
+        .findOne({ slug })
+        .select("-photo")
+        .lean()
+        .then((product) => {
+          const payload = { success: true, message: "Single Product Fetched", product };
+          const payloadJson = JSON.stringify(payload);
+          singleProductCache.set(slug, { payloadJson, expiresAt: Date.now() + SINGLE_PRODUCT_CACHE_TTL_MS });
+          singleProductInflight.delete(slug);
+          return payloadJson;
+        })
+        .catch((err) => {
+          singleProductInflight.delete(slug);
+          throw err;
+        });
+      singleProductInflight.set(slug, queryPromise);
+    }
+
+    const payloadJson = await queryPromise;
+    res.status(200).type("application/json").send(payloadJson);
   } catch (error) {
     console.log(error);
     res.status(500).send({
@@ -149,11 +208,42 @@ export const getSingleProductController = async (req, res) => {
 // get photo
 export const productPhotoController = async (req, res) => {
   try {
-    const product = await productModel.findById(req.params.pid).select("photo");
-    if (product.photo.data) {
-      res.set("Content-type", product.photo.contentType);
+    const pid = req.params.pid;
+
+    if (!pid || pid === "undefined" || !/^[a-f\d]{24}$/i.test(pid)) {
+      return res.status(400).send({ success: false, message: "Invalid product ID" });
+    }
+
+    const etag = `"${pid}"`;
+
+    if (req.headers["if-none-match"] === etag) {
+      return res.status(304).end();
+    }
+
+    const cached = photoCache.get(pid);
+    if (cached && cached.expiresAt > Date.now()) {
+      res.set("Content-Type", cached.contentType);
+      res.set("Cache-Control", "public, max-age=86400");
+      res.set("ETag", etag);
+      return res.status(200).send(cached.data);
+    }
+
+    const product = await productModel
+      .findById(pid)
+      .select("photo")
+      .lean();
+    if (product?.photo?.data) {
+      photoCache.set(pid, {
+        data: product.photo.data,
+        contentType: product.photo.contentType,
+        expiresAt: Date.now() + PHOTO_CACHE_TTL_MS,
+      });
+      res.set("Content-Type", product.photo.contentType);
+      res.set("Cache-Control", "public, max-age=86400");
+      res.set("ETag", etag);
       return res.status(200).send(product.photo.data);
     }
+    res.status(404).send({ success: false, message: "Photo not found" });
   } catch (error) {
     console.log(error);
     res.status(500).send({
@@ -169,6 +259,8 @@ export const deleteProductController = async (req, res) => {
   try {
     await productModel.findByIdAndDelete(req.params.pid).select("-photo");
     clearProductListCache();
+    clearPhotoCache(req.params.pid);
+    clearDetailCaches();
     res.status(200).send({
       success: true,
       message: "Product Deleted Successfully",
@@ -218,6 +310,8 @@ export const updateProductController = async (req, res) => {
     }
     await products.save();
     clearProductListCache();
+    clearPhotoCache(req.params.pid);
+    clearDetailCaches();
     res.status(201).send({
       success: true,
       message: "Product Updated Successfully",
@@ -240,7 +334,7 @@ export const productFiltersController = async (req, res) => {
     let args = {};
     if (checked.length > 0) args.category = checked;
     if (radio.length) args.price = { $gte: radio[0], $lte: radio[1] };
-    const products = await productModel.find(args);
+    const products = await productModel.find(args).select("-photo").lean();
     res.status(200).send({
       success: true,
       products,
@@ -258,7 +352,13 @@ export const productFiltersController = async (req, res) => {
 // product count
 export const productCountController = async (req, res) => {
   try {
-    const total = await productModel.find({}).estimatedDocumentCount();
+    if (productCountCache.total !== null && productCountCache.expiresAt > Date.now()) {
+      return res.status(200).send({ success: true, total: productCountCache.total });
+    }
+
+    const total = await productModel.estimatedDocumentCount();
+    productCountCache.total = total;
+    productCountCache.expiresAt = Date.now() + COUNT_CACHE_TTL_MS;
     res.status(200).send({
       success: true,
       total,
@@ -277,13 +377,21 @@ export const productCountController = async (req, res) => {
 export const productListController = async (req, res) => {
   try {
     const perPage = 6;
-    const page = req.params.page ? req.params.page : 1;
+    const page = req.params.page ? Number(req.params.page) : 1;
+    const after = req.query.after;
+
+    let query = {};
+    if (after) {
+      query._id = { $lt: after };
+    }
+
     const products = await productModel
-      .find({})
+      .find(query)
       .select("-photo")
-      .skip((page - 1) * perPage)
+      .skip(after ? 0 : (page - 1) * perPage)
       .limit(perPage)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     res.status(200).send({
       success: true,
       products,
@@ -325,18 +433,37 @@ export const searchProductController = async (req, res) => {
 export const relatedProductController = async (req, res) => {
   try {
     const { pid, cid } = req.params;
-    const products = await productModel
-      .find({
-        category: cid,
-        _id: { $ne: pid },
-      })
-      .select("-photo")
-      .limit(3)
-      .populate("category");
-    res.status(200).send({
-      success: true,
-      products,
-    });
+    const cacheKey = `${pid}:${cid}`;
+
+    const cached = relatedProductCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return res.status(200).type("application/json").send(cached.payloadJson);
+    }
+
+    let queryPromise = relatedInflight.get(cacheKey);
+    if (!queryPromise) {
+      queryPromise = productModel
+        .find({ category: cid, _id: { $ne: pid } })
+        .select("-photo")
+        .limit(3)
+        .sort({ createdAt: -1 })
+        .lean()
+        .then((products) => {
+          const payload = { success: true, products };
+          const payloadJson = JSON.stringify(payload);
+          relatedProductCache.set(cacheKey, { payloadJson, expiresAt: Date.now() + RELATED_CACHE_TTL_MS });
+          relatedInflight.delete(cacheKey);
+          return payloadJson;
+        })
+        .catch((err) => {
+          relatedInflight.delete(cacheKey);
+          throw err;
+        });
+      relatedInflight.set(cacheKey, queryPromise);
+    }
+
+    const payloadJson = await queryPromise;
+    res.status(200).type("application/json").send(payloadJson);
   } catch (error) {
     console.log(error);
     res.status(400).send({
@@ -350,8 +477,11 @@ export const relatedProductController = async (req, res) => {
 // get products by category
 export const productCategoryController = async (req, res) => {
   try {
-    const category = await categoryModel.findOne({ slug: req.params.slug });
-    const products = await productModel.find({ category }).populate("category");
+    const category = await categoryModel.findOne({ slug: req.params.slug }).lean();
+    const products = await productModel
+      .find({ category: category?._id })
+      .select("-photo")
+      .lean();
     res.status(200).send({
       success: true,
       category,

@@ -86,5 +86,34 @@ module.exports = async () => {
   await fs.mkdir(path.dirname(STORAGE_STATE_PATH), { recursive: true });
   await fs.writeFile(STORAGE_STATE_PATH, JSON.stringify(storageState, null, 2));
 
+  const products = mongoose.connection.collection("products");
+  await products.deleteMany({
+    slug: { $in: ["Test-Product", "Updated-Test-Product"] },
+  });
+
   await mongoose.disconnect();
+
+  const BACKEND_URL = "http://localhost:6060";
+
+  const MAX_WARMUP_ATTEMPTS = 15;
+  let serverReady = false;
+  for (let i = 0; i < MAX_WARMUP_ATTEMPTS; i++) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/product/product-list/1`);
+      if (res.ok) { serverReady = true; break; }
+    } catch {
+      // not ready yet
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  if (serverReady) {
+    for (let i = 0; i < 32; i++) {
+      await fetch(`${BACKEND_URL}/api/v1/product/product-list/1`).catch(() => null);
+    }
+    await Promise.allSettled([
+      fetch(`${BACKEND_URL}/api/v1/product/product-count`),
+      fetch(`${BACKEND_URL}/api/v1/category/get-category`),
+    ]);
+  }
 };

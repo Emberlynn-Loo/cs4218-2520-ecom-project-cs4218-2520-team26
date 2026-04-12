@@ -51,17 +51,23 @@ if (cluster.isPrimary) {
   //middlewares
   app.use(cors());
   app.use(express.json());
-  app.use(compression({ threshold: 1024 }));
+  app.use(compression({
+    threshold: 1024,
+    filter: (req, res) => {
+      if (req.path.startsWith("/api/v1/product/product-photo/")) return false;
+      return compression.filter(req, res);
+    },
+  }));
   if (process.env.ENABLE_HTTP_LOGS === "true") {
     app.use(morgan("dev"));
   }
+  
+  app.post("/api/v1/auth/login", loginRateLimit);
 
   //routes
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/category", categoryRoutes);
   app.use("/api/v1/product", productRoutes);
-
-  app.post("/api/v1/auth/login", loginRateLimit);
 
   app.get("/", (_req, res) => {
     res.send("<h1>Welcome to ecommerce app</h1>");

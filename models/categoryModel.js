@@ -9,10 +9,7 @@ const categorySchema = new mongoose.Schema({
     type: String,
     lowercase: true,
     unique: true,
-    index: true,
   },
 });
-
-categorySchema.index({ slug: 1 }, { unique: true });
 
 export default mongoose.model("Category", categorySchema);

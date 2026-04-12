@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "start:perf": "set UV_THREADPOOL_SIZE=16&& set ENABLE_HTTP_LOGS=false&& set MONGO_MAX_POOL_SIZE=200&& set MONGO_MIN_POOL_SIZE=20&& set TCP_BACKLOG=2048&& set LOGIN_RATE_LIMIT=500&& node server.js",
+    "start:perf": "set UV_THREADPOOL_SIZE=64&& set ENABLE_HTTP_LOGS=false&& set CLUSTER_WORKERS=4&& set MONGO_MAX_POOL_SIZE=20&& set MONGO_MIN_POOL_SIZE=2&& set TCP_BACKLOG=8192&& set LOGIN_RATE_LIMIT=1000&& node server.js",
     "server": "nodemon server.js",
     "client": "npm start --prefix ./client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
@@ -13,6 +13,9 @@
     "test:perf:seed-spike-users": "node tests/performance/auth-spike-testing/jmeter/seed-spike-users.cjs",
     "test:perf:auth-spike:smoke": "set PERF_PROFILE=smoke&& node tests/performance/auth-spike-testing/run-smoke-test.js",
     "test:perf:auth-spike:full": "set PERF_PROFILE=actual&& node tests/performance/auth-spike-testing/run-smoke-test.js",
+    "test:perf:seed-flash-sale-data": "set BCRYPT_ROUNDS=8&& set FORCE_RESEED=true&& node tests/performance/flash-sale-spike-testing/jmeter/seed-flash-sale-data.cjs",
+    "test:perf:flash-sale-spike:smoke": "set PERF_PROFILE=smoke&& node tests/performance/flash-sale-spike-testing/run-flash-sale-test.js",
+    "test:perf:flash-sale-spike:full": "set PERF_PROFILE=actual&& node tests/performance/flash-sale-spike-testing/run-flash-sale-test.js",
     "test": "npm run test:backend && npm run test:backend:integration && npm run test:frontend && npm run test:frontend:integration && npm run test:e2e",
     "test:frontend": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.frontend.config.js",
     "test:backend": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.backend.config.js",

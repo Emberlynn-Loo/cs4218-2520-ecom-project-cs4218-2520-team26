@@ -13,7 +13,6 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       unique: true,
-      index: true,
     },
     password: {
       type: String,
@@ -39,6 +38,5 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.index({ email: 1 }, { unique: true });
 
 export default mongoose.model("users", userSchema);

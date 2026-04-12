@@ -10,7 +10,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
     description: {
       type: String,
@@ -42,5 +41,7 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ createdAt: -1 });
 productSchema.index({ category: 1, createdAt: -1 });
+productSchema.index({ price: 1 });
+productSchema.index({ category: 1, price: 1 });
 
 export default mongoose.model("Products", productSchema);

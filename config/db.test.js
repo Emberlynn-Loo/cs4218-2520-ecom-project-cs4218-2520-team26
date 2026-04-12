@@ -67,6 +67,8 @@ describe("connectDB", () => {
         minPoolSize: 5,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
+        maxIdleTimeMS: 60000,
+        waitQueueTimeoutMS: 5000,
       },
     );
     expect(console.log).toHaveBeenCalledTimes(1);
@@ -92,6 +94,8 @@ describe("connectDB", () => {
         minPoolSize: 5,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
+        maxIdleTimeMS: 60000,
+        waitQueueTimeoutMS: 5000,
       },
     );
     expect(console.log).toHaveBeenCalledTimes(1);

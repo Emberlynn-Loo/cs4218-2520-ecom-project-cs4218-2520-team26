@@ -1,0 +1,728 @@
+<!-- Created by Nicholas Koh Zi Lun, A0272806B -->
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Flash-Sale Product Page Surge Spike Test" enabled="true">
+      <stringProp name="TestPlan.comments">Simulates a sudden flash-sale announcement burst. Users flood product detail pages, photo endpoints, and cart/checkout flows simultaneously. Validates: autoscaling behaviour, queue buildup under peak, timeout behaviour, and recovery to normal latency after spike subsides. Critical saturation points: getSingleProductController (slug-indexed Mongoose find), productPhotoController (MongoDB Buffer read + Node.js stream — key event loop saturation point), relatedProductController (compound category+sort query), loginController + bcrypt + JWT (concurrent pre-checkout auth compounding with photo reads), requireSignIn middleware under burst, Braintree token endpoint (cart checkout initiation, timeout gate).</stringProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+        <collectionProp name="Arguments.arguments">
+
+          <!-- ── Server ─────────────────────────────────────────────────── -->
+          <elementProp name="PROTOCOL" elementType="Argument">
+            <stringProp name="Argument.name">PROTOCOL</stringProp>
+            <stringProp name="Argument.value">${__P(PROTOCOL,http)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="HOST" elementType="Argument">
+            <stringProp name="Argument.name">HOST</stringProp>
+            <stringProp name="Argument.value">${__P(HOST,localhost)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="PORT" elementType="Argument">
+            <stringProp name="Argument.name">PORT</stringProp>
+            <stringProp name="Argument.value">${__P(PORT,6060)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- ── User load ──────────────────────────────────────────────── -->
+          <elementProp name="BASELINE_USERS" elementType="Argument">
+            <stringProp name="Argument.name">BASELINE_USERS</stringProp>
+            <stringProp name="Argument.value">${__P(BASELINE_USERS,200)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="BASELINE_RAMP_SECONDS" elementType="Argument">
+            <stringProp name="Argument.name">BASELINE_RAMP_SECONDS</stringProp>
+            <stringProp name="Argument.value">${__P(BASELINE_RAMP_SECONDS,30)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="SPIKE_PEAK_USERS" elementType="Argument">
+            <stringProp name="Argument.name">SPIKE_PEAK_USERS</stringProp>
+            <stringProp name="Argument.value">${__P(SPIKE_PEAK_USERS,5000)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <!-- CART_USERS: separate concurrent auth+checkout burst thread group -->
+          <elementProp name="CART_USERS" elementType="Argument">
+            <stringProp name="Argument.name">CART_USERS</stringProp>
+            <stringProp name="Argument.value">${__P(CART_USERS,2500)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- ── Pre-computed phase timing (seconds) ────────────────────── -->
+
+          <!-- TG1: Baseline runs for the FULL test duration -->
+          <elementProp name="P1_DURATION" elementType="Argument">
+            <stringProp name="Argument.name">P1_DURATION</stringProp>
+            <stringProp name="Argument.value">${__P(P1_DURATION,870)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- TG2: Product detail spike (fires after baseline ramp+hold) -->
+          <elementProp name="P2_DELAY" elementType="Argument">
+            <stringProp name="Argument.name">P2_DELAY</stringProp>
+            <stringProp name="Argument.value">${__P(P2_DELAY,330)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="P2_RAMPUP" elementType="Argument">
+            <stringProp name="Argument.name">P2_RAMPUP</stringProp>
+            <stringProp name="Argument.value">${__P(P2_RAMPUP,15)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="P2_DURATION" elementType="Argument">
+            <stringProp name="Argument.name">P2_DURATION</stringProp>
+            <stringProp name="Argument.value">${__P(P2_DURATION,120)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- TG3: Cart auth burst (concurrent with TG2 — same delay/ramp) -->
+          <elementProp name="P3_DELAY" elementType="Argument">
+            <stringProp name="Argument.name">P3_DELAY</stringProp>
+            <stringProp name="Argument.value">${__P(P3_DELAY,330)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="P3_RAMPUP" elementType="Argument">
+            <stringProp name="Argument.name">P3_RAMPUP</stringProp>
+            <stringProp name="Argument.value">${__P(P3_RAMPUP,15)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="P3_DURATION" elementType="Argument">
+            <stringProp name="Argument.name">P3_DURATION</stringProp>
+            <stringProp name="Argument.value">${__P(P3_DURATION,120)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- TG4: Recovery (starts when spike window ends) -->
+          <elementProp name="P4_DELAY" elementType="Argument">
+            <stringProp name="Argument.name">P4_DELAY</stringProp>
+            <stringProp name="Argument.value">${__P(P4_DELAY,465)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="P4_RAMPUP" elementType="Argument">
+            <stringProp name="Argument.name">P4_RAMPUP</stringProp>
+            <stringProp name="Argument.value">${__P(P4_RAMPUP,60)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="P4_DURATION" elementType="Argument">
+            <stringProp name="Argument.name">P4_DURATION</stringProp>
+            <stringProp name="Argument.value">${__P(P4_DURATION,120)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- TG5: Post-spike observation (starts after full recovery) -->
+          <elementProp name="P5_DELAY" elementType="Argument">
+            <stringProp name="Argument.name">P5_DELAY</stringProp>
+            <stringProp name="Argument.value">${__P(P5_DELAY,645)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="P5_DURATION" elementType="Argument">
+            <stringProp name="Argument.name">P5_DURATION</stringProp>
+            <stringProp name="Argument.value">${__P(P5_DURATION,180)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- ── Latency threshold ───────────────────────────────────────── -->
+          <!-- Samples exceeding this (ms) are flagged as latency failures.   -->
+          <elementProp name="LATENCY_THRESHOLD_MS" elementType="Argument">
+            <stringProp name="Argument.name">LATENCY_THRESHOLD_MS</stringProp>
+            <stringProp name="Argument.value">${__P(LATENCY_THRESHOLD_MS,5000)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- ── Data files ──────────────────────────────────────────────── -->
+          <elementProp name="CREDENTIALS_CSV" elementType="Argument">
+            <stringProp name="Argument.name">CREDENTIALS_CSV</stringProp>
+            <stringProp name="Argument.value">${__P(CREDENTIALS_CSV,tests/performance/flash-sale-spike-testing/jmeter/flash-sale-users.csv)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="PRODUCTS_CSV" elementType="Argument">
+            <stringProp name="Argument.name">PRODUCTS_CSV</stringProp>
+            <stringProp name="Argument.value">${__P(PRODUCTS_CSV,tests/performance/flash-sale-spike-testing/jmeter/flash-sale-products.csv)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+          <!-- ── Fallback values ─────────────────────────────────────────── -->
+          <elementProp name="DEFAULT_EMAIL" elementType="Argument">
+            <stringProp name="Argument.name">DEFAULT_EMAIL</stringProp>
+            <stringProp name="Argument.value">${__P(DEFAULT_EMAIL,flash-user-01@team26.local)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="DEFAULT_PASSWORD" elementType="Argument">
+            <stringProp name="Argument.name">DEFAULT_PASSWORD</stringProp>
+            <stringProp name="Argument.value">${__P(DEFAULT_PASSWORD,FlashPass@1)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="DEFAULT_SLUG" elementType="Argument">
+            <stringProp name="Argument.name">DEFAULT_SLUG</stringProp>
+            <stringProp name="Argument.value">${__P(DEFAULT_SLUG,flash-sale-product-1)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+
+        </collectionProp>
+      </elementProp>
+    </TestPlan>
+    <hashTree>
+
+      <!-- ============================================================ -->
+      <!-- HTTP Request Defaults                                         -->
+      <!-- ============================================================ -->
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults">
+        <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+        <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+        <stringProp name="HTTPSampler.protocol">${PROTOCOL}</stringProp>
+        <stringProp name="HTTPSampler.contentEncoding">utf-8</stringProp>
+        <stringProp name="HTTPSampler.connect_timeout">10000</stringProp>
+        <stringProp name="HTTPSampler.response_timeout">15000</stringProp>
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+          <collectionProp name="Arguments.arguments"/>
+        </elementProp>
+        <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
+      </ConfigTestElement>
+      <hashTree/>
+
+      <!-- ============================================================ -->
+      <!-- Credentials CSV                                               -->
+      <!-- ============================================================ -->
+      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="Credentials CSV">
+        <stringProp name="delimiter">,</stringProp>
+        <stringProp name="fileEncoding">UTF-8</stringProp>
+        <stringProp name="filename">${CREDENTIALS_CSV}</stringProp>
+        <boolProp name="ignoreFirstLine">true</boolProp>
+        <boolProp name="quotedData">false</boolProp>
+        <boolProp name="recycle">true</boolProp>
+        <stringProp name="shareMode">shareMode.all</stringProp>
+        <boolProp name="stopThread">false</boolProp>
+        <stringProp name="variableNames">csv_email,csv_password</stringProp>
+      </CSVDataSet>
+      <hashTree/>
+
+      <!-- ============================================================ -->
+      <!-- Products CSV                                                  -->
+      <!-- ============================================================ -->
+      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="Products CSV">
+        <stringProp name="delimiter">,</stringProp>
+        <stringProp name="fileEncoding">UTF-8</stringProp>
+        <stringProp name="filename">${PRODUCTS_CSV}</stringProp>
+        <boolProp name="ignoreFirstLine">true</boolProp>
+        <boolProp name="quotedData">false</boolProp>
+        <boolProp name="recycle">true</boolProp>
+        <stringProp name="shareMode">shareMode.all</stringProp>
+        <boolProp name="stopThread">false</boolProp>
+        <stringProp name="variableNames">csv_slug,csv_pid,csv_cid</stringProp>
+      </CSVDataSet>
+      <hashTree/>
+
+      <!-- ============================================================ -->
+      <!-- Global JSON Content-Type header                              -->
+      <!-- ============================================================ -->
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="JSON Content-Type" enabled="true">
+        <collectionProp name="HeaderManager.headers">
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+
+      <!-- ============================================================ -->
+      <!-- TG1: Phase 1 — Baseline Browsing                             -->
+      <!-- Delay: 0   Duration: P1_DURATION                             -->
+      <!-- ============================================================ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Phase 1 - Baseline Browsing">
+        <stringProp name="ThreadGroup.num_threads">${BASELINE_USERS}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${BASELINE_RAMP_SECONDS}</stringProp>
+        <stringProp name="ThreadGroup.duration">${P1_DURATION}</stringProp>
+        <longProp name="ThreadGroup.delay">0</longProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <!-- Homepage product listing — getProductController -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/get-product" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/get-product</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Product List 200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Homepage product listing failed</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- Category sidebar — getCategoryController -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/category/get-category" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/category/get-category</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Category 200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Category listing failed during baseline</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- Paginated product list page 1 — productListController -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/product-list/1" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/product-list/1</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Paginated List 200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Paginated product list failed during baseline</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+      </hashTree>
+
+      <!-- ============================================================ -->
+      <!-- TG2: Phase 2 — Flash-Sale Product Detail Spike               -->
+      <!-- The flash-sale announcement fires. SPIKE_PEAK_USERS ramp in  -->
+      <!-- P2_RAMPUP seconds (sudden burst) and stay for P2_DURATION.   -->
+      <!-- Delay: P2_DELAY  Ramp: P2_RAMPUP  Duration: P2_DURATION     -->
+      <!-- ============================================================ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Phase 2 - Flash-Sale Product Detail Spike">
+        <stringProp name="ThreadGroup.num_threads">${SPIKE_PEAK_USERS}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${P2_RAMPUP}</stringProp>
+        <stringProp name="ThreadGroup.duration">${P2_DURATION}</stringProp>
+        <stringProp name="ThreadGroup.delay">${P2_DELAY}</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <!-- Product detail — getSingleProductController: findOne({slug}) -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/get-product/:slug (Product Detail)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/get-product/${__groovy(vars.get('csv_slug') ?: vars.get('DEFAULT_SLUG'))}</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Product Detail 200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Product detail endpoint failed under flash-sale spike — DB pool exhaustion or event loop saturation detected</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+          <!-- Latency gate: slug-indexed find must stay within threshold under spike -->
+          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="Assert Product Detail Latency" enabled="true">
+            <stringProp name="DurationAssertion.duration">${LATENCY_THRESHOLD_MS}</stringProp>
+          </DurationAssertion>
+          <hashTree/>
+          <!-- Extract _id for downstream photo + related-products calls -->
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract Product ID" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">extracted_pid</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.product._id</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">${csv_pid}</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+        </hashTree>
+
+        <!-- Product photo — productPhotoController: findById → Buffer → stream  -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/product-photo/:pid (Image/Photo Endpoint)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/product-photo/${__groovy(vars.get('extracted_pid') ?: vars.get('csv_pid'))}</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Photo 200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Photo endpoint failed under flash-sale spike — MongoDB Buffer reads building response queue</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+          <!-- Latency gate: photo read + stream must complete within threshold -->
+          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="Assert Photo Latency" enabled="true">
+            <stringProp name="DurationAssertion.duration">${LATENCY_THRESHOLD_MS}</stringProp>
+          </DurationAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- Related products — relatedProductController: {category,$ne:pid}+sort -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/related-product/:pid/:cid (Related Products)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/related-product/${__groovy(vars.get('extracted_pid') ?: vars.get('csv_pid'))}/${__groovy(vars.get('csv_cid'))}</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Related Products 200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Related products endpoint failed under flash-sale spike</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+      </hashTree>
+
+      <!-- ============================================================ -->
+      <!-- TG3: Phase 3 — Add-to-Cart Authentication Burst              -->
+      <!-- Delay: P3_DELAY  Ramp: P3_RAMPUP  Duration: P3_DURATION     -->
+      <!-- ============================================================ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Phase 3 - Add-to-Cart Authentication Burst">
+        <stringProp name="ThreadGroup.num_threads">${CART_USERS}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${P3_RAMPUP}</stringProp>
+        <stringProp name="ThreadGroup.duration">${P3_DURATION}</stringProp>
+        <stringProp name="ThreadGroup.delay">${P3_DELAY}</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <!-- Cart step 1: login — email index + bcrypt.compare + JWT.sign -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /api/v1/auth/login (Add-to-Cart Pre-Auth)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/auth/login</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"email":"${__groovy(vars.get('csv_email') ?: vars.get('DEFAULT_EMAIL'))}","password":"${__groovy(vars.get('csv_password') ?: vars.get('DEFAULT_PASSWORD'))}"}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Login 200" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Login failed during cart auth burst — bcrypt + photo-read combined event loop saturation</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="Assert Login Latency" enabled="true">
+            <stringProp name="DurationAssertion.duration">${LATENCY_THRESHOLD_MS}</stringProp>
+          </DurationAssertion>
+          <hashTree/>
+          <!-- Extract JWT for the braintree/token step -->
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract JWT Token" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">auth_token</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">NO_TOKEN</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+          <!-- Verify JWT was issued — token issuance path must not silently drop -->
+          <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="Assert JWT Extracted" enabled="true">
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="script">def token = vars.get('auth_token')
+if (!token || token.trim().isEmpty() || token == 'NO_TOKEN') {
+    AssertionResult.setFailure(true)
+    AssertionResult.setFailureMessage('JWT not extracted — login returned 200 but token issuance failed under combined flash-sale + cart burst load')
+}</stringProp>
+          </JSR223Assertion>
+          <hashTree/>
+        </hashTree>
+
+        <!-- Cart step 2: checkout initiation — requireSignIn + braintreeTokenController -->
+        <IfController guiclass="IfControllerPanel" testclass="IfController" testname="Skip Braintree If Login Failed" enabled="true">
+          <stringProp name="IfController.condition">vars.get("auth_token") != null &amp;&amp; !vars.get("auth_token").equals("NO_TOKEN")</stringProp>
+          <boolProp name="IfController.evaluateAll">false</boolProp>
+          <boolProp name="IfController.useExpression">true</boolProp>
+        </IfController>
+        <hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/braintree/token (Cart Checkout Init)" enabled="true">
+            <stringProp name="HTTPSampler.path">/api/v1/product/braintree/token</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+              <collectionProp name="Arguments.arguments"/>
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <!-- Inject JWT — exercises requireSignIn JWT.verify under concurrent burst -->
+            <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Authorization Header" enabled="true">
+              <collectionProp name="HeaderManager.headers">
+                <elementProp name="" elementType="Header">
+                  <stringProp name="Header.name">Authorization</stringProp>
+                  <stringProp name="Header.value">Bearer ${auth_token}</stringProp>
+                </elementProp>
+              </collectionProp>
+            </HeaderManager>
+            <hashTree/>
+            <!-- Duration-only gate: validates no connection timeout / queue buildup drop -->
+            <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="Assert Cart Checkout Latency" enabled="true">
+              <stringProp name="DurationAssertion.duration">${LATENCY_THRESHOLD_MS}</stringProp>
+            </DurationAssertion>
+            <hashTree/>
+          </hashTree>
+        </hashTree>
+
+      </hashTree>
+
+      <!-- ============================================================ -->
+      <!-- TG4: Phase 4 — Recovery                                      -->
+      <!-- Load ramps back to BASELINE_USERS after the spike window.    -->
+      <!-- Delay: P4_DELAY  Ramp: P4_RAMPUP  Duration: P4_DURATION     -->
+      <!-- ============================================================ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Phase 4 - Recovery">
+        <stringProp name="ThreadGroup.num_threads">${BASELINE_USERS}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${P4_RAMPUP}</stringProp>
+        <stringProp name="ThreadGroup.duration">${P4_DURATION}</stringProp>
+        <stringProp name="ThreadGroup.delay">${P4_DELAY}</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/get-product (Recovery)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/get-product</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Homepage 200 Recovery" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Homepage product list failed to recover after flash-sale spike</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/get-product/:slug (Recovery)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/get-product/${__groovy(vars.get('csv_slug') ?: vars.get('DEFAULT_SLUG'))}</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Product Detail 200 Recovery" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Product detail failed to recover — lingering event loop backlog after flash-sale spike</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/product-photo/:pid (Recovery)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/product-photo/${__groovy(vars.get('csv_pid'))}</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Photo 200 Recovery" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Photo endpoint failed to recover after flash-sale spike</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+      </hashTree>
+
+      <!-- ============================================================ -->
+      <!-- TG5: Phase 5 — Post-Spike Observation                        -->
+      <!-- Delay: P5_DELAY  Duration: P5_DURATION                       -->
+      <!-- ============================================================ -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Phase 5 - Post-Spike Observation">
+        <stringProp name="ThreadGroup.num_threads">${BASELINE_USERS}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${BASELINE_RAMP_SECONDS}</stringProp>
+        <stringProp name="ThreadGroup.duration">${P5_DURATION}</stringProp>
+        <stringProp name="ThreadGroup.delay">${P5_DELAY}</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/get-product (Post-Spike)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/get-product</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Homepage 200 Post-Spike" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Homepage product list degraded in post-spike observation — autoscaling incomplete or lingering saturation</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/product-count (Post-Spike)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/product-count</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Product Count 200 Post-Spike" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Product count endpoint degraded in post-spike observation</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/product/get-product/:slug (Post-Spike)" enabled="true">
+          <stringProp name="HTTPSampler.path">/api/v1/product/get-product/${__groovy(vars.get('csv_slug') ?: vars.get('DEFAULT_SLUG'))}</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Product Detail 200 Post-Spike" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">Product detail degraded in post-spike observation — system has not fully recovered</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+
+      </hashTree>
+
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

@@ -5,6 +5,8 @@ node_modules
 /playwright/.cache/
 /tests/e2e/.auth/
 /tests/performance/auth-spike-testing/results/
+/tests/performance/flash-sale-spike-testing/results/
+jmeter.log
 
 .env
 
