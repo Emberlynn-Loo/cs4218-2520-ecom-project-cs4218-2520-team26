@@ -11,9 +11,8 @@
 
 set -euo pipefail
 
-# ── Resolve paths ─────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"   # three levels up from scripts/
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 RECOVERY_DIR="${PROJECT_ROOT}/tests/non-functional/recovery"
 
 K6_SCRIPT="${RECOVERY_DIR}/k6-db-recovery-traffic.js"
@@ -23,7 +22,6 @@ BASE_URL="${BASE_URL:-http://localhost:6060}"
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 
-# ── Cleanup on exit ───────────────────────────────────────────────────────────
 SERVER_PID=""
 cleanup() {
     log "Cleaning up..."
@@ -34,7 +32,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ── Verify k6 script exists ───────────────────────────────────────────────────
 if [[ ! -f "${K6_SCRIPT}" ]]; then
     echo "ERROR: k6 script not found at ${K6_SCRIPT}"
     exit 1
@@ -45,7 +42,6 @@ log "k6 script    : ${K6_SCRIPT}"
 log "Server log   : ${SERVER_LOG}"
 log "k6 JSON log  : ${K6_JSON_LOG}"
 
-# ── Start server ──────────────────────────────────────────────────────────────
 log "Starting server (fault injection ENABLED)..."
 ENABLE_FAULT_INJECTION=true \
 NODE_ENV=development \
@@ -53,7 +49,6 @@ NODE_ENV=development \
 SERVER_PID=$!
 log "Server PID: ${SERVER_PID}  (logs → ${SERVER_LOG})"
 
-# ── Wait for server to be healthy ─────────────────────────────────────────────
 log "Waiting for server to boot..."
 for i in $(seq 1 15); do
     sleep 1
@@ -68,7 +63,6 @@ for i in $(seq 1 15); do
     fi
 done
 
-# ── Verify fault injection routes are active ──────────────────────────────────
 STATUS_RESP=$(curl -sf "${BASE_URL}/_test/db/status" 2>/dev/null || echo "FAILED")
 if [[ "${STATUS_RESP}" == "FAILED" ]]; then
     log "ERROR: Fault injection routes not reachable. Is ENABLE_FAULT_INJECTION=true set?"
@@ -76,7 +70,6 @@ if [[ "${STATUS_RESP}" == "FAILED" ]]; then
 fi
 log "Fault injection routes active ✓"
 
-# ── Start k6 in the background ────────────────────────────────────────────────
 log "Starting k6 load test (90 s)..."
 K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PERIOD=1s \
 k6 run \
@@ -86,13 +79,9 @@ k6 run \
 K6_PID=$!
 log "k6 PID: ${K6_PID}"
 
-# ── Phase 1: Baseline (0–30 s) ────────────────────────────────────────────────
 log "Baseline phase running for 30s..."
 sleep 30
 
-# ── Phase 2: Inject DB failure at t=30 s ─────────────────────────────────────
-# We tell the router to auto-reconnect after 30 s (at t=60 s) as a safety net,
-# but we also issue an explicit reconnect call below at t=60 s.
 log "Injecting DB disconnection (simulating Atlas connectivity loss)..."
 DISCONNECT_RESP=$(curl -sf -X POST \
     -H "Content-Type: application/json" \
@@ -107,13 +96,11 @@ fi
 log "Failure window active for 30s..."
 sleep 30
 
-# ── Phase 3: Restore DB at t=60 s ────────────────────────────────────────────
 log "Restoring DB connection (simulating Atlas connectivity restored)..."
 RECONNECT_RESP=$(curl -sf -X POST \
     "${BASE_URL}/_test/db/reconnect" 2>/dev/null || echo "FAILED")
 log "Reconnect response: ${RECONNECT_RESP}"
 
-# Verify readyState returned to 1
 READY_STATE=$(curl -sf "${BASE_URL}/_test/db/status" 2>/dev/null \
     | python3 -c "import sys,json; print(json.load(sys.stdin).get('readyState','?'))" 2>/dev/null \
     || echo "?")
