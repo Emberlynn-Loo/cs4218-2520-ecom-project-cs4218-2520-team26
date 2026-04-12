@@ -1,8 +1,7 @@
 /**
  * Seed script for auth spike test users.
  *
- * Usage (from project root):
- *   node tests/performance/jmeter/seed-spike-users.cjs
+ * Created by Nicholas Koh Zi Lun, A0272806B
  */
 
 "use strict";

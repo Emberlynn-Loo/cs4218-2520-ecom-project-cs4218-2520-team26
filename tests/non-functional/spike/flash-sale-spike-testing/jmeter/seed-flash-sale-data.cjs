@@ -1,5 +1,7 @@
 "use strict";
 
+// Created by Nicholas Koh Zi Lun, A0272806B
+
 const path = require("path");
 const fs = require("fs");
 const readline = require("readline");

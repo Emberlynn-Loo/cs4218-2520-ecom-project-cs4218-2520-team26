@@ -3,6 +3,7 @@
 /**
  * Smoke Test Runner
  * Reads configuration from smoke-config.js and executes JMeter test + reporting.
+ * Created by Nicholas Koh Zi Lun, A0272806B
  */
 
 const fs = require("fs");
@@ -100,10 +101,10 @@ try {
 // Generate phase summary
 console.log("\n📈 Generating phase summary...");
 try {
-  execSync("node tests/performance/auth-spike-testing/generate_phase_summary.cjs", {
+  execSync("node tests/non-functional/spike/auth-spike-testing/generate_phase_summary.cjs", {
     stdio: "inherit",
     shell: process.platform === "win32",
-    cwd: path.join(__dirname, "..", "..", ".."),
+    cwd: path.join(__dirname, "..", "..", "..", ".."),
     env: {
       ...process.env,
       JTL_PATH: jtlFile,

@@ -1,9 +1,11 @@
+// Created by Nicholas Koh Zi Lun, A0272806B
+
 const common = {
   protocol: "http",
   host:     "localhost",
   port:     6060,
-  credentialsCsv: "tests/performance/flash-sale-spike-testing/jmeter/flash-sale-users.csv",
-  productsCsv:    "tests/performance/flash-sale-spike-testing/jmeter/flash-sale-products.csv",
+  credentialsCsv: "tests/non-functional/spike/flash-sale-spike-testing/jmeter/flash-sale-users.csv",
+  productsCsv:    "tests/non-functional/spike/flash-sale-spike-testing/jmeter/flash-sale-products.csv",
   defaultEmail:    "flash-user-01@team26.local",
   defaultPassword: "FlashPass@1",
   defaultSlug:     "flash-sale-product-1",

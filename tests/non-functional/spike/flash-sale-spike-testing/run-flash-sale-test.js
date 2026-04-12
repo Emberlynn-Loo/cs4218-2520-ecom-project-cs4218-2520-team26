@@ -2,6 +2,8 @@
 
 "use strict";
 
+// Created by Nicholas Koh Zi Lun, A0272806B
+
 const fs   = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
@@ -139,7 +141,7 @@ try {
   execSync(summaryCmd, {
     stdio: "inherit",
     shell: process.platform === "win32",
-    cwd:   path.join(__dirname, "..", "..", ".."),
+    cwd:   path.join(__dirname, "..", "..", "..", ".."),
     env: {
       ...process.env,
       JTL_PATH:         JTL_FILE,

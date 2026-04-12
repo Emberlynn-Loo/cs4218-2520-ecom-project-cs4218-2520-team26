@@ -19,13 +19,15 @@
  * - Actual profile: $env:PERF_PROFILE="actual"; npm run test:perf:auth-spike:smoke
  *
  * Prerequisites: all users in auth-users.csv must be pre-seeded in the DB.
+ * 
+ * Created by Nicholas Koh Zi Lun, A0272806B
  */
 
 const common = {
   protocol: "http",
   host: "localhost",
   port: 6060,
-  credentialsCsv: "tests/performance/auth-spike-testing/jmeter/auth-users.csv",
+  credentialsCsv: "tests/non-functional/spike/auth-spike-testing/jmeter/auth-users.csv",
   defaultEmail: "spike-user-01@team26.local",
   defaultPassword: "SpikePass@1",
   // Login samples exceeding this threshold (ms) are flagged as latency failures.
