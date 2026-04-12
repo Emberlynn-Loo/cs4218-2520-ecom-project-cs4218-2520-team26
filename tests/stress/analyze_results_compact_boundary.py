@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+Ashley Chang Le Xuan, A0252633J
 Analyze JMeter results for the compact boundary sweep (30-160 users).
 
 Purpose:
@@ -9,7 +10,8 @@ Purpose:
 - identify the highest healthy stage under configurable thresholds
 
 Usage:
-  python analyze_results_quickcheck.py results/checkout_stress_compact_boundary.csv \
+  run the stress test with JMeter, saving results to a CSV file (e.g. results/checkout_stress_compact_boundary.csv), then run this script to analyze the results:
+  python analyze_results_compact_boundary.py results/checkout_stress_compact_boundary.csv \
       --error-threshold 0.05 --p95-threshold-ms 5000
 """
 
