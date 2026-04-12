@@ -46,6 +46,17 @@
   - Helper files
     - tests\non-functional\stress\analyze_results_compact_boundary.py
 
+**Emberlynn Loo Hui-E, A0255614E**
+- Performance (Stress)
+  - Service Recovery After Backend Restart During Active Traffic
+    - `tests/non-functional/recovery/k6-backend-restart-traffic.js`
+    - `tests/non-functional/recovery/shell scripts/restart-backend.sh`
+  - Database Connectivity Loss and Recovery Validation
+    - `tests/non-functional/recovery/k6-db-recovery-traffic.js`
+    - `tests/non-functional/recovery/inject-db-failure.js`
+    - `tests/non-functional/recovery/scripts/run-recovery-test.sh`
+
+
 ## MS2
 
 ### Individual Contributions
